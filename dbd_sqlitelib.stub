@@ -11,6 +11,12 @@
 (define-cproc test-dbd_sqlite () ::<const-cstring>
   (result "dbd_sqlite is working"))
 
+(define-cproc sqlite-libversion ()
+  (return (getLibSqliteVersion)))
+
+(define-cproc sqlite-libversion-number ()
+  (return (getLibSqliteVersionNumber)))
+
 
 ;; Local variables:
 ;; mode: scheme

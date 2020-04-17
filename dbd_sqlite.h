@@ -18,6 +18,10 @@ SCM_DECL_BEGIN
 
 extern ScmObj test_dbd_sqlite(void);
 
+extern ScmObj getLibSqliteVersion();
+
+extern ScmObj getLibSqliteVersionNumber();
+
 /* Epilogue */
 SCM_DECL_END
 

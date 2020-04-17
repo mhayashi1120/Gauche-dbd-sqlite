@@ -21,6 +21,8 @@ SOEXT  = @SOEXT@
 OBJEXT = @OBJEXT@
 EXEEXT = @EXEEXT@
 LOCAL_PATHS = "@LOCAL_PATHS@"
+LIBS   = "@LIBS@"
+LDFLAGS = "@LDFLAGS@"
 
 # Module-specific stuff
 PACKAGE   = Gauche-dbd-sqlite
@@ -40,10 +42,15 @@ GAUCHE_PKGARCHDIR = "$(DESTDIR)@GAUCHE_PKGARCHDIR@"
 
 dbd_sqlite_SRCS = $(srcdir)/dbd_sqlite.c $(srcdir)/dbd_sqlitelib.stub
 
+MY_DEBUG_COMPILE = --keep-c-files
+
 all : $(TARGET)
 
 dbd_sqlite.$(SOEXT): $(dbd_sqlite_SRCS)
 	$(GAUCHE_PACKAGE) compile \
+	  $(MY_DEBUG_COMPILE) \
+	  --ldflags=$(LDFLAGS) \
+	  --libs=$(LIBS) \
 	  --local=$(LOCAL_PATHS) --verbose dbd_sqlite $(dbd_sqlite_SRCS)
 
 check : all
