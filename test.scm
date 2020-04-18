@@ -8,11 +8,6 @@
 (use dbd.sqlite)
 (test-module 'dbd.sqlite)
 
-;; The following is a dummy test code.
-;; Replace it for your tests.
-(test* "test-dbd_sqlite" "dbd_sqlite is working"
-       (test-dbd_sqlite))
-
 (test* "get and print version with no error" #t
        (sqlite-libversion)
        (^ [_ x] (string? x)))

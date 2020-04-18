@@ -8,9 +8,6 @@
 ;; The following entry is a dummy one.
 ;; Replace it for your definitions.
 
-(define-cproc test-dbd_sqlite () ::<const-cstring>
-  (result "dbd_sqlite is working"))
-
 (define-cproc sqlite-libversion ()
   (return (getLibSqliteVersion)))
 

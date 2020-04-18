@@ -11,11 +11,6 @@
  * your C function definitions.
  */
 
-ScmObj test_dbd_sqlite(void)
-{
-    return SCM_MAKE_STR("dbd_sqlite is working");
-}
-
 ScmObj getLibSqliteVersionNumber()
 {
     return Scm_MakeInteger(sqlite3_libversion_number());

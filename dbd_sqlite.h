@@ -16,8 +16,6 @@ SCM_DECL_BEGIN
  * Replace it for your declarations.
  */
 
-extern ScmObj test_dbd_sqlite(void);
-
 extern ScmObj getLibSqliteVersion();
 
 extern ScmObj getLibSqliteVersionNumber();

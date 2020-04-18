@@ -1,0 +1,7 @@
+*.o
+Gauche-dbd-sqlite.gpd
+*.so
+*.log
+VERSION
+Makefile
+dbd_sqlitelib.c
