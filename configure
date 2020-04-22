@@ -5,12 +5,16 @@
 (use gauche.mop.singleton)
 (use gauche.configure)
 
+(define (required-lib-not-found libname)
+  (format #t "~a not found.\n" libname)
+  (exit 1))
+
 ;; Here you can define handlers of configure arguments by cf-arg-enable
 ;; and cf-arg-with.  Note that --with-local is handled implicitly if you use
 ;; cf-init-gauche-extension.
 (cf-arg-with
  'libssl
- "  --with-libsqlite=PATH      Use Sqlite devkit installed under PATH."
+ "  --with-sqlite3=PATH      Use Sqlite devkit installed under PATH."
  (^x (cf-subst-prepend 'LDFLAGS x)))
 
 ;; Initialize configure.  This creates the global context, parses
@@ -25,7 +29,8 @@
 
 (cf-check-headers '("sqlite3.h"))
 
-(cf-check-lib "sqlite3" "sqlite3_libversion")
+(cf-check-lib "sqlite3" "sqlite3_libversion"
+              :if-not-found required-lib-not-found)
 
 ;; Output
 (cf-output-default)

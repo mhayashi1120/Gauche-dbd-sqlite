@@ -6,10 +6,7 @@
 
 #include <sqlite3.h>
 
-/*
- * The following function is a dummy one; replace it for
- * your C function definitions.
- */
+/* TODO sqlite3_last_insert_rowid */
 
 ScmObj getLibSqliteVersionNumber()
 {
@@ -18,8 +15,256 @@ ScmObj getLibSqliteVersionNumber()
 
 ScmObj getLibSqliteVersion()
 {
-    return SCM_MAKE_STR_COPYING(sqlite3_libversion());
+    return SCM_MAKE_STR_IMMUTABLE(sqlite3_libversion());
 }
+
+ScmObj openDB(ScmString * filenameArg, int flags)
+{
+    const char * filename = Scm_GetStringConst(filenameArg);
+    sqlite3 * pDb;
+
+    int result = sqlite3_open_v2(
+	filename, &ppDb,
+	flags,              /* Flags */
+	""        /* Name of VFS module to use TODO */
+	);
+
+    /* TODO register finalizer */
+    ScmSqlite3Db * db = SCM_NEW(ScmSqlite3Db);
+
+    db->ptr = pDb;
+
+    return SCM_OBJ(db);
+}
+
+void closeDB(db)
+{
+    if (db->ptr == NULL) {
+	return;
+    }
+
+    int result = sqlite3_close_v2(db->ptr);
+
+    /* TODO close all statements ? close_v2 interface doc seems to say close automatically all. */
+    db->ptr = NULL;
+
+    /* TODO result */
+}
+
+ScmObj prepareStmt(ScmSqlite3Db * db, ScmString * sql)
+{
+    const char * zSql = Scm_GetStringConst(sql);
+    int nByte = SCM_STRING_BODY_SIZE(sql);
+    unsigned int prepFlags = 0;
+    sqlite3_stmt * pStmt;
+    char * zTail = zSql;
+
+    /* TODO must check not closed caller */
+    /* should not assert. just return? */
+    SCM_ASSERT(db->ptr != NULL);
+
+    while (1) {
+	int result = sqlite3_prepare_v3(
+	    db->ptr, zSql, nByte,
+	    /* Zero or more SQLITE_PREPARE_ flags */
+	    prepFlags,
+	    &pStmt, &zTail
+	    );
+
+	if (result != SQLITE_OK) {
+	    Scm_Error("Failed to prepare statement.");
+	}
+
+	if (pStmt == NULL) {
+	    Scm_Error("Unknown error statement is not created.");
+	}
+
+	if (*zTail == '\0')
+	    break;
+
+	/* ignore result until last statement. */
+	sqlite3_finalize(pStmt);
+
+	pStmt = NULL;
+	zSql = zTail;
+	/* TODO sql has "SELECT 1; invalid statement;" */
+	/* "SELECT 1; \n" (space appended) what happen?*/
+    }
+    
+    SCM_ASSERT(pStmt != NULL);
+
+    /* TODO register finalizer */
+    ScmSqlite3Stmt * stmt = SCM_NEW(ScmSqlite3Stmt);
+
+    stmt->sql = SCM_MAKE_STR_COPYING(zSql);
+    stmt->ptr = pStmt;
+
+    return SCM_OBJ(stmt);
+}
+
+/* SQLite Parameter allow ":", "$", "@", "?" prefix  */
+/* This function return list that contains ScmString with those prefix */
+/* e.g. "SELECT :hoge, @foo" sql -> (":hoge" "@foo")  */
+/* TODO anonymous */
+/* TODO call before bind sqlite3_reset(stmt); */
+ScmObj requiredParameters(ScmSqlite3Stmt stmt)
+{
+    SCM_ASSERT(stmt->ptr != NULL);
+
+    sqlite3_stmt * pStmt = stmt->ptr;
+    int count = sqlite3_bind_parameter_count(pStmt);
+    ScmList result = SCM_NIL;
+
+    /* parameter index start from 1 not 0 */
+    for (int i = count; 0 < i; i--) {
+	const char * name = sqlite3_bind_parameter_name(pStmt, i);
+	result = Scm_Cons(SCM_MAKE_STR_COPYING(name), result);
+    }
+
+    return result;
+}
+
+void bindParameters(ScmSqlite3Stmt stmt, ScmList params)
+{
+    SCM_ASSERT(stmt->ptr != NULL);
+
+    sqlite3_stmt * pStmt = stmt->ptr;
+    ScmSize len = Scm_Length(params);
+
+    /* TODO clear_bindings */
+    /* Bind parameter index start from 1 not 0 */
+    for (int i = 1; i <= len; i++) {
+	ScmObj scmValue = SCM_CAR(pamras);
+
+	if (SCM_STRINGP(scmValue)) {
+	    /* TODO fifth */
+	    const char * text = Scm_GetStringConst(scmValue);
+	    const int size = SCM_STRING_BODY_SIZE(scmValue);
+
+	    sqlite3_bind_text(pStmt, i, text, size, NULL);
+	} else if (SCM_INTEGERP(scmValue)) {
+	    /* TODO range */
+	    /* TODO sqlite3_bind_int  when small? */
+	    sqlite3_int64 ll = Scm_GetInteger64(scmValue);
+	    sqlite3_bind_int64(pStmt, i, ll);
+	} else if (SCM_FLONUM(scmValue)) {
+	    /* TODO other inexact value? */
+	    const double f = Scm_GetDouble(scmValue);
+	    sqlite3_bind_double(pStmt, i, f);
+	} else if (SCM_UVECTORP(scmValue)) {
+	    /* TODO just u8? */
+	    const int size = SCM_UVECTOR_SIZE(scmValue);
+	    const unsigned char * blob = SCM_UVECTOR_ELEMENTS(scmValue);
+	    /* TODO fifth */
+	    sqlite3_bind_blob(pStmt, i, blob, size, NULL);
+	} else if (SCM_FALSEP(scmValue)) {
+	    sqlite3_bind_null(pStmt, i);
+	} else {
+	    SCM_ASSERT(0);
+	}
+
+	params = SCM_CDR(params);
+    }
+    
+}
+
+ScmObj readResult(stmt)
+{
+    sqlite3_stmt * pStmt = stmt->ptr;
+    int result = sqlite3_step(pStmt);
+
+    switch (result)
+    {
+    case SQLITE_BUSY:
+	Scm_Error("Database is busy.");
+    case SQLITE_DONE:
+	sqlite3_finalize(pStmt);
+	/* sqlite3_changes(pStmt) */
+	/* TODO when SELECT return EOF */
+	stmt->ptr = NULL;
+	break;
+    case SQLITE_ROW:
+	stmt->columns = readColumns(pStmt);
+	return readRow(pStmt);
+    case SQLITE_ERROR:
+	Scm_Error(sqlite3_errmsg());
+    case SQLITE_MISUSE:
+	Scm_Error("Statement is in misuse.");
+    default:
+	SCM_ASSERT(0);
+    }
+}
+
+static ScmObj readColumns(sqlite3_stmt * pStmt)
+{
+    int col = sqlite3_column_count(pStmt);
+    ScmObj result = SCM_NIL;
+
+    SCM_ASSERT(col > 0);
+
+    for (int i = col - 1; 0 <= i <; i--) {
+	const char * name = sqlite3_column_name(pStmt, i);
+
+	result = Scm_Cons(SCM_MAKE_STR_COPYING(name), result);
+    }
+
+    return result;
+}
+
+static ScmObj readRow(sqlite3_stmt * pStmt)
+{
+    int col = sqlite3_column_count(pStmt);
+
+    SCM_ASSERT(col > 0);
+
+    ScmVector v = Scm_MakeVector(col, SCM_FALSE);
+
+    for (int i = 0; i < col; i++) {
+	switch (sqlite3_column_type(pStmt, i)) {
+	case SQLITE_INTEGER:
+	    ScmObj n = Scm_MakeInteger(sqlite3_column_int64(pStmt, i));
+
+	    Scm_VectorSet(v, i, n);
+	    break;
+	case SQLITE_FLOAT:
+	    ScmObj f = Scm_MakeFlonum(sqlite3_column_double(pStmt, i));
+
+	    Scm_VectorSet(v, i, f);
+	    break;
+	case SQLITE_TEXT:
+	    const char * text = sqlite3_column_text(pStmt, i);
+	    const char * size = sqlite3_column_bytes(pStmt, i);
+	    const ScmObj str = Scm_MakeString(text, size, size, SCM_STRING_COPYING)
+
+	    Scm_VectorSet(v, i, str);
+	    break;
+	case SQLITE_BLOB:
+	    const unsigned char * blob = sqlite3_column_blob(pStmt, i);
+	    const char * size = sqlite3_column_bytes(pStmt, i);
+	    const ScmObj u8vec = Scm_MakeU8VectorFromArray(size, blob);
+
+	    Scm_VectorSet(v, i, u8vec);
+	    break;
+	case SQLITE_NULL:
+	    break;
+	}
+    }
+
+    return SCM_OBJ(v);
+}
+
+void closeStmt(stmt)
+{
+    if (stmt->ptr == NULL) {
+	return;
+    }
+
+    sqlite3_finalize(stmt->ptr);
+    stmt->ptr = NULL;
+}
+
+/* TODO timeout */
+
 
 /*
  * Module initialization function.

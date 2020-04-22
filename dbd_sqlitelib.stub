@@ -5,14 +5,93 @@
 (declcode
  (.include "dbd_sqlite.h"))
 
-;; The following entry is a dummy one.
-;; Replace it for your definitions.
+;;
+;; Export asis
+;;
 
 (define-cproc sqlite-libversion ()
   (return (getLibSqliteVersion)))
 
 (define-cproc sqlite-libversion-number ()
   (return (getLibSqliteVersionNumber)))
+
+"
+ static void printSqliteStmt(ScmObj obj, ScmPort *out, ScmWriteContext *ctx)
+ {
+   Scm_Printf(out, \"#<sqlite-stmt %p>\", obj);
+ }
+
+ static void printSqliteDb(ScmObj obj, ScmPort *out, ScmWriteContext *ctx)
+ {
+   Scm_Printf(out, \"#<sqlite-db %p>\", obj);
+ }
+
+"
+
+(define-cptr <sqlite-db-handle>
+  "ScmSqliteDb" "Scm_SqliteDbClass"
+  "SQLITE3_DB" "SQLITE3_DB" "SQLITE3_DB"
+  (print "printSqliteDb")
+  )
+
+(define-cptr <sqlite-stmt-handle>
+  "ScmSqliteStmt" "Scm_SqliteStmtClass"
+  "SQLITE3_STMT" "SQLITE3_STMT" "SQLITE3_STMT"
+  (print "printSqliteStmt"))
+
+;;
+;; Module internal
+;;
+
+;; Required
+(define-enum SQLITE_OPEN_READONLY)
+(define-enum SQLITE_OPEN_READWRITE)
+(define-enum SQLITE_OPEN_CREATE)
+
+;; Optional
+(define-enum SQLITE_OPEN_URI)
+(define-enum SQLITE_OPEN_MEMORY)
+(define-enum SQLITE_OPEN_NOMUTEX)
+(define-enum SQLITE_OPEN_FULLMUTEX)
+(define-enum SQLITE_OPEN_SHAREDCACHE)
+(define-enum SQLITE_OPEN_PRIVATECACHE)
+(define-enum SQLITE_OPEN_NOFOLLOW)
+
+(define-cproc open-db (path :: <const-string>) :: <sqlite-db-handle>
+  ;; TODO flags
+  (return (openDB path 0)))
+
+(define-cproc close-db (db :: <sqlite-db-handle>) :: <void>
+  (closeDB db))
+
+(define-cproc prepare-stmt (db :: <sqlite-db-handle> query :: <const-string>) :: <sqlite-stmt-handle>
+  (return (prepareStmt db query)))
+
+(define-cproc stmt-parameters (stmt :: <sqlite-stmt-handle>)
+  (return (requiredParameters stmt)))
+
+;; TODO should return applied row count
+;;   -> no! read-next return if not pair?
+(define-cproc execute-stmt (stmt :: <sqlite-stmt-handle> params :: <list>)
+  (bindParameters stmt params)
+  (return (readResult stmt)))
+
+(define-cproc stmt-is-readable (stmt :: <sqlite-stmt-handle>)
+  )
+
+(define-cproc stmt-read-columns (stmt :: <sqlite-stmt-handle>)
+  ;; Return pair
+  )
+
+;; (define-cproc open-stmt-reader (stmt :: <sqlite-stmt-handle>)
+;;   )
+
+(define-cproc stmt-read-next (stmt :: <sqlite-stmt-handle>)
+  ;; TODO Return vector
+  )
+
+(define-cproc close-stmt (stmt :: <sqlite-stmt-handle>) :: <void>
+  (closeStmt stmt))
 
 
 ;; Local variables:
