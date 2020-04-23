@@ -78,8 +78,9 @@
 ;; <sequence> API
 (define-method call-with-iterator ((r <sqlite-result>) proc . option)
   (define (next-step)
-    (stmt-read-next (~ (~ r'source-query) '%stmt-handle)))
-
+    (receive (_ result) (stmt-read-next (~ (~ r'source-query) '%stmt-handle))
+      result))
+  
   (unless (dbi-open? r)
     (error <dbi-error> "<sqlite-result> already closed:" r))
   (let* ([next-result (next-step)]
@@ -107,7 +108,7 @@
                        sql
                        )
                      (dbi-prepare-sql c sql))]
-         [stmt (prepare-stmt db prepared)]
+         [stmt (prepare-stmt c prepared)]
          [query (make <sqlite-query>
                   :%stmt-handle stmt
                   :connection c
@@ -136,11 +137,12 @@
        (^ [name]
          (or (assoc-ref val-alist name)
              ;; TODO bind as NULL
+             ;; TODO or error? option?
              #f))
        sql-params)))
 
   (let* ([canon-params (canonicalize-parameters params)])
-    (receive (result readable?) (execute-stmt (~ q'%stmt-handle) canon-params)
+    (receive (readable? result) (execute-stmt (~ q'%stmt-handle) canon-params)
 
       ;;TODO compound-statement
       ;; close the first select stmt -> return last stmt result.
