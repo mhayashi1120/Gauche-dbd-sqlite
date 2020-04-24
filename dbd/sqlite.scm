@@ -136,7 +136,7 @@
           [else
            (assoc-ref options-alist "db" #f)])
       (let* ([flags (logior SQLITE_OPEN_READWRITE)]
-             [db #?= (open-db file flags)])
+             [db (open-db file flags)])
         (make <sqlite-connection>
           :%db-handle db)))))
 
@@ -217,7 +217,7 @@
        sql-params)))
 
   (let* ([canon-params (canonicalize-parameters params)])
-    (receive (readable? result) (execute-stmt (get-handle q) #?= canon-params)
+    (receive (readable? result) (execute-stmt (get-handle q) canon-params)
 
       ;;TODO compound-statement
       ;; close the first select stmt -> return last stmt result.

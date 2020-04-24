@@ -80,7 +80,7 @@
   (return (prepareStmt db query)))
 
 (define-cproc stmt-parameters (stmt::<sqlite-stmt>)
-  (return (requiredParameters stmt)))
+  (return (listParameters stmt)))
 
 ;; TODO should return applied row count
 ;;   -> no! read-next return if not pair?

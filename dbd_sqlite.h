@@ -54,7 +54,7 @@ extern ScmObj openDB(ScmString * filenameArg, int flags);
 extern void closeDB(ScmSqliteDb * db);
 extern ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql);
 extern void closeStmt(ScmSqliteStmt * stmt);
-extern ScmObj requiredParameters(ScmSqliteStmt * stmt);
+extern ScmObj listParameters(ScmSqliteStmt * stmt);
 extern ScmObj readLastChanges(ScmSqliteStmt * stmt);
 extern ScmObj readResult(ScmSqliteStmt * stmt);
 

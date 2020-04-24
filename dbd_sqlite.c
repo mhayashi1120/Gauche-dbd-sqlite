@@ -254,7 +254,7 @@ error:
 /* This function return list that contains ScmString with those prefix */
 /* e.g. "SELECT :hoge, @foo" sql -> (":hoge" "@foo")  */
 /* TODO call before bind sqlite3_reset(stmt); */
-ScmObj requiredParameters(ScmSqliteStmt * stmt)
+ScmObj listParameters(ScmSqliteStmt * stmt)
 {
     SCM_ASSERT(stmt->ptr != NULL);
 
@@ -313,8 +313,6 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 	    /* TODO fifth arg */
 	    sqlite3_bind_blob(pStmt, i, blob, size, NULL);
 	} else if (SCM_FALSEP(scmValue)) {
-printf("COLUMN: %d as NULL\n", i);
-fflush(stdout);
 	    sqlite3_bind_null(pStmt, i);
 	} else {
 	    SCM_ASSERT(0);

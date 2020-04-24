@@ -109,25 +109,28 @@ SELECT id, name FROM hoge" )
 ;;;
 
 ;; Get by ":" prefix param
-(test-sql* "Select by \":\" parameter." `(#("n1")) "SELECT name FROM hoge WHERE id = :id" :id 1)
-(test-sql* "Select by \"@\" parameter." `(#("n1")) "SELECT name FROM hoge WHERE id = @id" :@id 1)
-(test-sql* "Select by \"$\" parameter." `(#("n1")) "SELECT name FROM hoge WHERE id = $id" :$id 1)
-(test-sql* "Select by index parameter 1-1." `(#("n1")) "SELECT name FROM hoge WHERE id = ?" 1)
-(test-sql* "Select by index parameter 1-2." `(#("n2" #f)) "SELECT name, ? FROM hoge WHERE id = ?" #f 2)
-(test-sql* "Select by index parameter 2." `(#("n1")) "SELECT name FROM hoge WHERE id = :001" :001 1)
-(test-sql* "Select by index parameter 3." `(#("n1")) "SELECT name FROM hoge WHERE id = ?002" :?002 1)
-(test-sql* "Select by index parameter 4." `(#("n1")) "SELECT name FROM hoge WHERE id = ?3" :?3 1)
-(test-sql* "Select by index parameter 5." `(#("n1")) "SELECT name FROM hoge WHERE id = ?4" #f #f #f :?4 1)
+(test-sql* "Select by \":\" parameter" `(#("n1")) "SELECT name FROM hoge WHERE id = :id" :id 1)
+(test-sql* "Select by \"@\" parameter" `(#("n1")) "SELECT name FROM hoge WHERE id = @id" :@id 1)
+(test-sql* "Select by \"$\" parameter" `(#("n1")) "SELECT name FROM hoge WHERE id = $id" :$id 1)
+(test-sql* "Select by index parameter 1-1" `(#("n1")) "SELECT name FROM hoge WHERE id = ?" 1)
+(test-sql* "Select by index parameter 1-2" `(#("n2" #f)) "SELECT name, ? FROM hoge WHERE id = ?" #f 2)
+(test-sql* "Select by index parameter 2" `(#("n1")) "SELECT name FROM hoge WHERE id = :001" :001 1)
+(test-sql* "Select by index parameter 3" `(#("n1")) "SELECT name FROM hoge WHERE id = ?002" :?002 1)
+(test-sql* "Select by index parameter 4" `(#("n1")) "SELECT name FROM hoge WHERE id = ?3" :?3 1)
+(test-sql* "Select by index parameter 5" `(#("n1")) "SELECT name FROM hoge WHERE id = ?4" #f #f #f :?4 1)
 
 (test-sql* "Select binding parameter"
-           `(#("1" 2 #u8(5 6) 7 #f))
+           `(#("1" 2 #u8(5 6) "1" #f))
              "SELECT :a1, $a2, @a3, ?1, :a4null"
              :a1 "1"
-             :a2 2
-             :a3 #u8(5 6)
-             :1 7
+             :$a2 2
+             :@a3 #u8(5 6)
+             :?1 "no meaning"
+             ;; Not bound but no error.
              ;; :a4null #f
              )
+
+
 
 
 ;;;
