@@ -68,13 +68,16 @@
  , PRIMARY KEY (id)
   );")])
          (dbi-execute q))
-       (^ [_ x] #?= x #t))
+       (^ [_ x] x #t))
 
 (use gauche.collection)
 
+(define (query->list q . params)
+  (map identity (apply dbi-execute q params)))
+
 (define (sql->result sql . params)
   (let* ([q (dbi-prepare *connection* sql)])
-    (map identity (apply dbi-execute q params))))
+    (apply query->list q params)))
 
 (define (test-sql name expected sql . params)
   (test* name expected
@@ -82,7 +85,7 @@
 
 (define (sql->result* sql . params)
   (let* ([q (dbi-prepare *connection* sql :pass-through #t)])
-    (map identity (apply dbi-execute q params))))
+    (apply query->list q params)))
 
 (define (test-sql* name expected sql . params)
   (test* name expected
@@ -120,16 +123,31 @@ SELECT id, name FROM hoge" )
 (test-sql* "Select by index parameter 5" `(#("n1")) "SELECT name FROM hoge WHERE id = ?4" #f #f #f :?4 1)
 
 (test-sql* "Select binding parameter"
-           `(#("1" 2 #u8(5 6) "1" #f))
-             "SELECT :a1, $a2, @a3, ?1, :a4null"
+           `(#("1" 2 #u8(5 6) "1" #f 8))
+             "SELECT :a1, $a2, @a3, ?1, :a4null, ?"
              :a1 "1"
              :$a2 2
              :@a3 #u8(5 6)
              :?1 "no meaning"
              ;; Not bound but no error.
              ;; :a4null #f
+             8
              )
 
+(let* ([q (dbi-prepare *connection* "SELECT :a" :pass-through #t :strict-bind? #t)])
+  
+  (test* "Strict bind (No parameter supplied.)" (test-error)
+         (query->list q))
+
+  ;; TODO reconsider
+  ;; (test* "Strict bind (Extra parameter supplied.)" (test-error)
+  ;;        (query->list q :a 1 :b 3))
+  )
+
+;; TODO Prepared reuse (need reset?)
+;; TODO generator
+
+;; edge case
 
 
 

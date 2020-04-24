@@ -11,6 +11,8 @@
   (export
    <sqlite-connection> <sqlite-driver> <sqlite-query> <sqlite-result>
    sqlite-libversion-number sqlite-libversion
+
+   call-with-iterator
    )
   )
 (select-module dbd.sqlite)
@@ -18,6 +20,33 @@
 ;; Loads extension
 (dynamic-load "dbd_sqlite")
 
+
+;;;
+;;; DBI class
+;;;
+
+(define-class <sqlite-driver> (<dbi-driver>)())
+
+(define-class <sqlite-connection> (<dbi-connection>)
+  (
+   (%db-handle :init-keyword :%db-handle)
+   ))
+
+(define-class <sqlite-query> (<dbi-query>)
+  (
+   (%stmt-handle :init-keyword :%stmt-handle)
+   (%sql :init-keyword :%sql)
+   (strict-bind? :init-keyword :strict-bind?)
+   ))
+
+(define-class <sqlite-result> (<relation> <sequence>)
+  (
+   (source-query :init-keyword :source-query)
+   (seed :init-keyword :seed)
+   ))
+
+(define-condition-type <sqlite-error> <dbi-error> #f
+  (errcode))
 
 ;;;
 ;;; Sqlite module specific
@@ -39,35 +68,8 @@
 
 
 ;;;
-;;; Interface
+;;; Internal accessor
 ;;;
-
-(define-condition-type <sqlite-error> <dbi-error> #f
-  (errcode))
-
-(define-class <sqlite-driver> (<dbi-driver>)())
-
-;; (define-method initialize ((self <sqlite-driver>))
-;;   (next-method)
-;; )
-
-(define-class <sqlite-connection> (<dbi-connection>)
-  (
-   (%db-handle :init-keyword :%db-handle)
-   ))
-
-(define-class <sqlite-query> (<dbi-query>)
-  (
-   (%stmt-handle :init-keyword :%stmt-handle)
-   (%sql :init-keyword :%sql)
-   (strict-bind? :init-keyword :strict-bind?)
-   ))
-
-(define-class <sqlite-result> (<relation> <sequence>)
-  (
-   (source-query :init-keyword :source-query)
-   (seed :init-keyword :seed)
-   ))
 
 (define-method get-handle ((c <sqlite-connection>))
   (~ c'%db-handle))
@@ -84,7 +86,16 @@
 (define-method get-handle ((r <sqlite-result>))
   (get-handle (~ r 'source-query)))
 
-;; <relation> API
+
+;; (define-method initialize ((self <sqlite-driver>))
+;;   (next-method)
+;; )
+
+
+;;;
+;;; <relation> API
+;;;
+
 (define-method relation-column-names ((r <sqlite-result>))
   (stmt-read-columns (get-handle r)))
 
@@ -99,7 +110,9 @@
 (define-method relation-rows ((r <sqlite-result>))
   r)
 
-;; <sequence> API
+;;;
+;;; <sequence> API
+;;;
 (define-method call-with-iterator ((r <sqlite-result>) proc . option)
   (define (step)
     (values-ref (stmt-read-next (get-handle r)) 1))
@@ -114,6 +127,10 @@
        (begin0
            result
          (set! result (step)))))))
+
+;;;
+;;; DBI interface
+;;;
 
 (define-method dbi-make-connection ((d <sqlite-driver>) (options <string>)
                                     (options-alist <list>)
@@ -147,6 +164,10 @@
                             . args)
   (let-keywords args
       ([pass-through #f]
+       ;; TODO just effect pass-through is #t
+       ;; TODO reconsider.
+       ;; "SELECT :a" with (:b = 1)
+       ;; "SELECT :a" with (:a = 1, :b = 1)
        [strict-bind? #f]
        . restargs)
     (let* ([prepared (if pass-through
@@ -179,16 +200,6 @@
   
   ;; Qが‘select’-型のクエリの場合は、このメソッドは適切なリレー ションオ
   ;; ブジェクトを返さなければなりません。
-
-  ;; (define (ensure-parameter-name k)
-  ;;   (let1 basename (keyword->string k)
-  ;;     (cond
-  ;;      ;; [(#/^[?]([0-9]+)$/ basename) =>
-  ;;      ;;  (^m (string->number (m 1)))]
-  ;;      [(#/^[:@$?]/ basename)
-  ;;       basename]
-  ;;      [else
-  ;;       #":~|basename|"])))
 
   (define (canonicalize-parameters source-params)
     (let ([sql-params (stmt-parameters (get-handle q))]
