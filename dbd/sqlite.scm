@@ -113,7 +113,7 @@
      (^ []
        (begin0
            result
-           (set! result (step)))))))
+         (set! result (step)))))))
 
 (define-method dbi-make-connection ((d <sqlite-driver>) (options <string>)
                                     (options-alist <list>)
@@ -168,6 +168,9 @@
 ;; SELECT -> return <sqlite-result>
 ;; Other DML -> Not defined in gauche info but UPDATE, DELETE, INSERT return integer
 ;;  that hold affected row count. Should not use integer if you need portable code.
+;; PARAMS: TODO keyword expand to bind parameter and others position parameter in the PARAMS.
+;;   e.g. TODO
+;; No need to mixture index parameter and named parameter. but shoud working.
 (define-method dbi-execute-using-connection ((c <sqlite-connection>) (q <sqlite-query>)
                                              (params <list>))
   ;; {dbi} このメソッドは‘dbi-execute’から呼ばれます。Qが保持するクエ リ
@@ -177,23 +180,44 @@
   ;; Qが‘select’-型のクエリの場合は、このメソッドは適切なリレー ションオ
   ;; ブジェクトを返さなければなりません。
 
+  ;; (define (ensure-parameter-name k)
+  ;;   (let1 basename (keyword->string k)
+  ;;     (cond
+  ;;      ;; [(#/^[?]([0-9]+)$/ basename) =>
+  ;;      ;;  (^m (string->number (m 1)))]
+  ;;      [(#/^[:@$?]/ basename)
+  ;;       basename]
+  ;;      [else
+  ;;       #":~|basename|"])))
+
   (define (canonicalize-parameters source-params)
     (let ([sql-params (stmt-parameters (get-handle q))]
-          [val-alist (map (match-lambda
-                           [(k v)
-                            (cons (keyword->string k) v)])
-                          (slices source-params 2))])
-      (map
-       (^ [name]
-         (or (assoc-ref val-alist name #f)
-             ;; TODO bind as NULL
-             (and (~ q'strict-bind?)
-                  (errorf "Parameter ~s not found" name))
-             ))
+          [val-alist (let loop ([ps source-params]
+                                [res '()]
+                                [i 1])
+                       (match ps
+                         ['()
+                          (reverse! res)]
+                         [((? keyword? k) v . rest)
+                          (loop rest (cons (cons (keyword->parameter k) v) res) (+ i 1))]
+                         [(v . rest)
+                          (loop rest (cons (cons i v) res) (+ i 1))]))])
+      (map-with-index
+       (^ [index name]
+         (cond
+          [(not name)
+           ;; "anonymous parameters" e.g. "SELECT ?, ?"
+           (assq-ref val-alist (+ index 1))
+           ;; TODO strict-bind?
+           ]
+          [else
+           (or (assoc-ref val-alist name #f)
+               (and (~ q 'strict-bind?)
+                    (errorf "Parameter ~s not found" name)))]))
        sql-params)))
 
   (let* ([canon-params (canonicalize-parameters params)])
-    (receive (readable? result) (execute-stmt (get-handle q) canon-params)
+    (receive (readable? result) (execute-stmt (get-handle q) #?= canon-params)
 
       ;;TODO compound-statement
       ;; close the first select stmt -> return last stmt result.

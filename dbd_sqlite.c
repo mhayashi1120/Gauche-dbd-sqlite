@@ -60,9 +60,12 @@ static ScmObj readRow(sqlite3_stmt * pStmt)
 static ScmObj readColumns(sqlite3_stmt * pStmt)
 {
     int col = sqlite3_column_count(pStmt);
-    ScmObj result = SCM_NIL;
 
-    SCM_ASSERT(0 < col);
+    if (col <= 0) {
+	return NULL;
+    }
+
+    ScmObj result = SCM_NIL;
 
     for (int i = col - 1; 0 <= i; i--) {
 	const char * name = sqlite3_column_name(pStmt, i);
@@ -232,6 +235,7 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
     ScmSqliteStmt * stmt = SCM_NEW(ScmSqliteStmt);
     SCM_SET_CLASS(stmt, SCM_CLASS_SQLITE_STMT);
 
+    stmt->columns = readColumns(pStmt);
     stmt->db = db;
     stmt->sql = SCM_STRING(SCM_MAKE_STR_COPYING(zSql));
     stmt->ptr = pStmt;
@@ -249,7 +253,6 @@ error:
 /* SQLite Parameter allow ":", "$", "@", "?" prefix  */
 /* This function return list that contains ScmString with those prefix */
 /* e.g. "SELECT :hoge, @foo" sql -> (":hoge" "@foo")  */
-/* TODO anonymous */
 /* TODO call before bind sqlite3_reset(stmt); */
 ScmObj requiredParameters(ScmSqliteStmt * stmt)
 {
@@ -263,9 +266,14 @@ ScmObj requiredParameters(ScmSqliteStmt * stmt)
     for (int i = count; 0 < i; i--) {
 	const char * name = sqlite3_bind_parameter_name(pStmt, i);
 
-	result = Scm_Cons(SCM_MAKE_STR_COPYING(name), result);
+	if (name == NULL) {
+	    result = Scm_Cons(SCM_FALSE, result);
+	} else {
+	    result = Scm_Cons(SCM_MAKE_STR_COPYING(name), result);
+	}
     }
 
+    /* edge case: Programmer can choose "SELECT ?999" as parameter. */
     return result;
 }
 
@@ -294,7 +302,7 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 	    /* TODO sqlite3_bind_int  when small? */
 	    sqlite3_int64 ll = Scm_GetInteger64(scmValue);
 	    sqlite3_bind_int64(pStmt, i, ll);
-	} else if (SCM_FLONUM(scmValue)) {
+	} else if (SCM_FLONUMP(scmValue)) {
 	    /* TODO other inexact value? */
 	    const double f = Scm_GetDouble(scmValue);
 	    sqlite3_bind_double(pStmt, i, f);
@@ -305,6 +313,8 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 	    /* TODO fifth arg */
 	    sqlite3_bind_blob(pStmt, i, blob, size, NULL);
 	} else if (SCM_FALSEP(scmValue)) {
+printf("COLUMN: %d as NULL\n", i);
+fflush(stdout);
 	    sqlite3_bind_null(pStmt, i);
 	} else {
 	    SCM_ASSERT(0);
@@ -336,20 +346,21 @@ ScmObj readResult(ScmSqliteStmt * stmt)
     case SQLITE_DONE:
 	{
 	ScmObj second = NULL;
+	ScmObj result = NULL;
 
-	if (stmt->columns != NULL) 
+	if (stmt->columns != NULL) { 
 	    second = SCM_EOF;
-	else
+	    result = Scm_Values2(SCM_TRUE, second);
+	} else {
 	    second = readLastChanges(stmt);
-
-	ScmObj result = Scm_Values2(SCM_FALSE, second);
+	    result = Scm_Values2(SCM_FALSE, second);
+	}
 
 	sqlite3_finalize(stmt->ptr);
 	stmt->ptr = NULL;
 	return result;
 	}
     case SQLITE_ROW:
-	stmt->columns = readColumns(stmt->ptr);
 	return Scm_Values2(SCM_TRUE, readRow(stmt->ptr));
     case SQLITE_ERROR:
 	errmsg = getErrorMessage(stmt->db->ptr);

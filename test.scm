@@ -70,7 +70,7 @@
          (dbi-execute q))
        (^ [_ x] #?= x #t))
 
-(use gauche.sequence)
+(use gauche.collection)
 
 (define (sql->result sql . params)
   (let* ([q (dbi-prepare *connection* sql)])
@@ -89,7 +89,7 @@
          (apply sql->result* sql params)))
 
 ;; Multiple statement
-(test-sql "TODO"
+(test-sql "Multiple statement and get last statement result."
           `(#(1 "n1") #(2 "n2") #(3 "n3"))
           "INSERT INTO hoge(id, name, created) VALUES (1, 'n1', '2020-01-01 00:01:02');
 INSERT INTO hoge(id, name, created) VALUES (2, 'n2', '2020-02-03 01:02:03');
@@ -97,7 +97,7 @@ INSERT INTO hoge(id, name, created) VALUES (3, 'n3', '2020-03-04 02:03:04');
 SELECT id, name FROM hoge" )
 
 ;; Ignore first statement result
-(test-sql "TODO"
+(test-sql "Multiple statements and get last statement result. 2"
           `(#(1 2))
           "SELECT 1; SELECT 1, 2;" )
 
@@ -108,9 +108,20 @@ SELECT id, name FROM hoge" )
 ;;; Pass through
 ;;;
 
-(test-sql* "TODO"
+;; Get by ":" prefix param
+(test-sql* "Select by \":\" parameter." `(#("n1")) "SELECT name FROM hoge WHERE id = :id" :id 1)
+(test-sql* "Select by \"@\" parameter." `(#("n1")) "SELECT name FROM hoge WHERE id = @id" :@id 1)
+(test-sql* "Select by \"$\" parameter." `(#("n1")) "SELECT name FROM hoge WHERE id = $id" :$id 1)
+(test-sql* "Select by index parameter 1-1." `(#("n1")) "SELECT name FROM hoge WHERE id = ?" 1)
+(test-sql* "Select by index parameter 1-2." `(#("n2" #f)) "SELECT name, ? FROM hoge WHERE id = ?" #f 2)
+(test-sql* "Select by index parameter 2." `(#("n1")) "SELECT name FROM hoge WHERE id = :001" :001 1)
+(test-sql* "Select by index parameter 3." `(#("n1")) "SELECT name FROM hoge WHERE id = ?002" :?002 1)
+(test-sql* "Select by index parameter 4." `(#("n1")) "SELECT name FROM hoge WHERE id = ?3" :?3 1)
+(test-sql* "Select by index parameter 5." `(#("n1")) "SELECT name FROM hoge WHERE id = ?4" #f #f #f :?4 1)
+
+(test-sql* "Select binding parameter"
            `(#("1" 2 #u8(5 6) 7 #f))
-             "SELECT :a1 $a2 @a3 ?1 :a4null"
+             "SELECT :a1, $a2, @a3, ?1, :a4null"
              :a1 "1"
              :a2 2
              :a3 #u8(5 6)
@@ -118,13 +129,6 @@ SELECT id, name FROM hoge" )
              ;; :a4null #f
              )
 
-;; Get by ":" prefix param
-(test-sql* "TODO" `(#("n1")) "SELECT name FROM hoge WHERE id = :id" :id 1)
-(test-sql* "TODO" `(#("n1")) "SELECT name FROM hoge WHERE id = @id" :@id 1)
-(test-sql* "TODO" `(#("n1")) "SELECT name FROM hoge WHERE id = $id" :$id 1)
-(test-sql* "TODO" `(#("n1")) "SELECT name FROM hoge WHERE id = ?" :1 1)
-(test-sql* "TODO" `(#("n1")) "SELECT name FROM hoge WHERE id = ?001" :1 1)
-(test-sql* "TODO" `(#("n1")) "SELECT name FROM hoge WHERE id = ?1" :1 1)
 
 ;;;
 ;;; SQL syntax error
