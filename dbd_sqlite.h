@@ -30,7 +30,9 @@ SCM_CLASS_DECL(Scm_SqliteDbClass);
 typedef struct ScmSqliteStmtRec {
 	SCM_HEADER;
 	ScmSqliteDb * db;
+	// TODO move to cclass
 	ScmString * sql;
+	// TODO move to cclass
 	ScmObj columns;
 	sqlite3_stmt * ptr; /* NULL if closed */
 } ScmSqliteStmt;

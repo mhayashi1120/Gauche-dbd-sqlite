@@ -44,11 +44,13 @@
 
 (define-cclass <sqlite-db> "ScmSqliteDb*" "Scm_SqliteDbClass"
   ()
-  ())
+  ()
+  (printer (Scm_Printf port "#<sqlite-db %p>" obj)))
 
 (define-cclass <sqlite-stmt> "ScmSqliteStmt*" "Scm_SqliteStmtClass"
   ()
-  ())
+  ()
+  (printer (Scm_Printf port "#<sqlite-stmt %p>" obj)))
 
 ;;
 ;; Module internal
@@ -59,21 +61,19 @@
 (define-enum SQLITE_OPEN_READWRITE)
 (define-enum SQLITE_OPEN_CREATE)
 
-;; Optional
-(define-enum SQLITE_OPEN_URI)
-(define-enum SQLITE_OPEN_MEMORY)
-(define-enum SQLITE_OPEN_NOMUTEX)
-(define-enum SQLITE_OPEN_FULLMUTEX)
-(define-enum SQLITE_OPEN_SHAREDCACHE)
-(define-enum SQLITE_OPEN_PRIVATECACHE)
-;; TODO
-;;(define-enum SQLITE_OPEN_NOFOLLOW)
+;; Optional flags
+(define-enum-conditionally SQLITE_OPEN_URI)
+(define-enum-conditionally SQLITE_OPEN_MEMORY)
+(define-enum-conditionally SQLITE_OPEN_NOMUTEX)
+(define-enum-conditionally SQLITE_OPEN_FULLMUTEX)
+(define-enum-conditionally SQLITE_OPEN_SHAREDCACHE)
+(define-enum-conditionally SQLITE_OPEN_PRIVATECACHE)
+(define-enum-conditionally SQLITE_OPEN_NOFOLLOW)
 
-(define-cproc open-db (path::<string>)
-  ;; TODO flags
-  (return (openDB path 0)))
+(define-cproc open-db (path::<string> flags::<int>)
+  (return (openDB path flags)))
 
-(define-cproc close-db (db::<sqlite-db>) :: <void>
+(define-cproc db-close (db::<sqlite-db>) :: <void>
   (closeDB db))
 
 (define-cproc prepare-stmt (db::<sqlite-db> query::<string>)
@@ -89,6 +89,7 @@
   (return (readResult stmt)))
 
 (define-cproc stmt-is-readable (stmt::<sqlite-stmt>)
+  ;; TODO
   )
 
 (define-cproc stmt-read-columns (stmt::<sqlite-stmt>)

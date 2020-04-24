@@ -73,7 +73,35 @@ static ScmObj readColumns(sqlite3_stmt * pStmt)
     return result;
 }
 
+static void finalizeDBMaybe(ScmObj z, void *data)
+{
+printf("finalize DB %p\n", z);
+fflush(stdout);
+}
 
+static void finalizeStmtMaybe(ScmObj z, void *data)
+{
+printf("finalize STMT %p\n", z);
+fflush(stdout);
+}
+
+/* duplicate sqlite3_errmsg and keep it as Scheme object. */
+/* When sqlite3_* finalize process is ran before raise error */
+/* errmsg will be cleared. */
+static ScmString * dupErrorMessage(const char * errmsg)
+{
+    return SCM_STRING(SCM_MAKE_STR_COPYING(errmsg));
+}
+
+static ScmString * getErrorMessage(sqlite3 * pDb)
+{
+    return dupErrorMessage(sqlite3_errmsg(pDb));
+}
+
+static void raiseError(ScmString * msg)
+{
+    Scm_Error(Scm_GetStringConst(msg));
+}
 
 /* TODO sqlite3_last_insert_rowid -> no need just call SQL if need.*/
 
@@ -90,20 +118,44 @@ ScmObj getLibSqliteVersion()
 ScmObj openDB(ScmString * filenameArg, int flags)
 {
     const char * filename = Scm_GetStringConst(filenameArg);
-    sqlite3 * pDb;
+    sqlite3 * pDb = NULL;
+    ScmString * errmsg = NULL;
 
     int result = sqlite3_open_v2(
 	filename, &pDb,
 	flags,              /* Flags */
-	""        /* Name of VFS module to use TODO */
+	NULL        /* Name of VFS module to use TODO */
 	);
 
-    /* TODO register finalizer */
+    if (result != SQLITE_OK) {
+	if (pDb != NULL) {
+	    errmsg = getErrorMessage(pDb);
+	} else {
+	    errmsg = dupErrorMessage("dbd.sqlite: Unknown error while opening DB.");
+	}
+	goto error;
+    }
+
     ScmSqliteDb * db = SCM_NEW(ScmSqliteDb);
+    SCM_SET_CLASS(db, SCM_CLASS_SQLITE_DB);
+
+    Scm_RegisterFinalizer(SCM_OBJ(db), finalizeDBMaybe, NULL);
 
     db->ptr = pDb;
 
     return SCM_OBJ(db);
+
+error:
+
+    if (pDb != NULL) {
+	/* TODO or sqlite3_close no need release other resource here */
+	sqlite3_close_v2(pDb);
+    }
+
+    if (errmsg == NULL)
+	return SCM_FALSE;
+
+    raiseError(errmsg);
 }
 
 void closeDB(ScmSqliteDb * db)
@@ -117,6 +169,8 @@ void closeDB(ScmSqliteDb * db)
     /* TODO close all statements ? close_v2 interface doc seems to say close automatically all. */
     db->ptr = NULL;
 
+    Scm_UnregisterFinalizer(SCM_OBJ(db));
+
     /* TODO result */
 }
 
@@ -127,6 +181,7 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
     unsigned int prepFlags = 0;
     sqlite3_stmt * pStmt;
     const char * zTail = zSql;
+    ScmString * errmsg = NULL;
 
     /* TODO must check not closed caller */
     /* should not assert. just return? */
@@ -141,11 +196,13 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
 	    );
 
 	if (result != SQLITE_OK) {
-	    Scm_Error("Failed to prepare statement.");
+	    errmsg = getErrorMessage(db->ptr);
+	    goto error;
 	}
 
 	if (pStmt == NULL) {
-	    Scm_Error("Unknown error statement is not created.");
+	    errmsg = dupErrorMessage("Unknown error statement is not created.");
+	    goto error;
 	}
 
 	if (*zTail == '\0')
@@ -159,7 +216,8 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
 
 	if (stepResult != SQLITE_DONE &&
 	    stepResult != SQLITE_ROW) {
-	    Scm_Error("todo");
+	    errmsg = dupErrorMessage("todo");
+	    goto error;
 	}
 
 	pStmt = NULL;
@@ -172,12 +230,20 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
 
     /* TODO register finalizer */
     ScmSqliteStmt * stmt = SCM_NEW(ScmSqliteStmt);
+    SCM_SET_CLASS(stmt, SCM_CLASS_SQLITE_STMT);
 
     stmt->db = db;
     stmt->sql = SCM_STRING(SCM_MAKE_STR_COPYING(zSql));
     stmt->ptr = pStmt;
 
     return SCM_OBJ(stmt);
+
+error:
+
+    if (errmsg == NULL)
+	return SCM_FALSE;
+
+    raiseError(errmsg);
 }
 
 /* SQLite Parameter allow ":", "$", "@", "?" prefix  */
@@ -260,12 +326,12 @@ ScmObj readLastChanges(ScmSqliteStmt * stmt)
 ScmObj readResult(ScmSqliteStmt * stmt)
 {
     int result = sqlite3_step(stmt->ptr);
-    char * errmsg = NULL;
+    ScmString * errmsg = NULL;
 
     switch (result)
     {
     case SQLITE_BUSY:
-	errmsg = "Database is busy.";
+	errmsg = dupErrorMessage("Database is busy.");
 	goto error;
     case SQLITE_DONE:
 	{
@@ -286,10 +352,10 @@ ScmObj readResult(ScmSqliteStmt * stmt)
 	stmt->columns = readColumns(stmt->ptr);
 	return Scm_Values2(SCM_TRUE, readRow(stmt->ptr));
     case SQLITE_ERROR:
-	errmsg = sqlite3_errmsg(stmt->db->ptr);
+	errmsg = getErrorMessage(stmt->db->ptr);
 	goto error;
     case SQLITE_MISUSE:
-	errmsg = "Statement is in misuse.";
+	errmsg = dupErrorMessage("Statement is in misuse.");
 	goto error;
     default:
 	SCM_ASSERT(0);
@@ -299,9 +365,10 @@ error:
     sqlite3_finalize(stmt->ptr);
 
     if (errmsg == NULL)
-	return;
+	/* TODO reconsider */
+	return SCM_FALSE;
 
-    Scm_Error(errmsg);
+    raiseError(errmsg);
 }
 
 void closeStmt(ScmSqliteStmt * stmt)

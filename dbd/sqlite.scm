@@ -3,10 +3,13 @@
 ;;;
 
 (define-module dbd.sqlite
+  (use util.match)
+  (use text.tr)
   (use dbi)
   (use gauche.sequence)
   (use util.relation)
   (export
+   <sqlite-connection> <sqlite-driver> <sqlite-query> <sqlite-result>
    sqlite-libversion-number sqlite-libversion
    )
   )
@@ -44,6 +47,10 @@
 
 (define-class <sqlite-driver> (<dbi-driver>)())
 
+;; (define-method initialize ((self <sqlite-driver>))
+;;   (next-method)
+;; )
+
 (define-class <sqlite-connection> (<dbi-connection>)
   (
    (%db-handle :init-keyword :%db-handle)
@@ -53,16 +60,33 @@
   (
    (%stmt-handle :init-keyword :%stmt-handle)
    (%sql :init-keyword :%sql)
+   (strict-bind? :init-keyword :strict-bind?)
    ))
 
 (define-class <sqlite-result> (<relation> <sequence>)
   (
-   (source-query :init-keyword :source-query))
-  )
+   (source-query :init-keyword :source-query)
+   (seed :init-keyword :seed)
+   ))
+
+(define-method get-handle ((c <sqlite-connection>))
+  (~ c'%db-handle))
+
+(define-method clear-handle! ((c <sqlite-connection>))
+  (slot-set! c '%db-handle #f))
+
+(define-method get-handle ((q <sqlite-query>))
+  (~ q '%stmt-handle))
+
+(define-method clear-handle! ((q <sqlite-query>))
+  (slot-set! q '%stmt-handle #f))
+
+(define-method get-handle ((r <sqlite-result>))
+  (get-handle (~ r 'source-query)))
 
 ;; <relation> API
 (define-method relation-column-names ((r <sqlite-result>))
-  (stmt-read-columns (~ (~ r 'source-query) '%stmt-handle)))
+  (stmt-read-columns (get-handle r)))
 
 (define-method relation-accessor ((r <sqlite-result>))
   (^ [t c]
@@ -77,48 +101,74 @@
 
 ;; <sequence> API
 (define-method call-with-iterator ((r <sqlite-result>) proc . option)
-  (define (next-step)
-    (receive (_ result) (stmt-read-next (~ (~ r'source-query) '%stmt-handle))
-      result))
+  (define (step)
+    (values-ref (stmt-read-next (get-handle r)) 1))
   
   (unless (dbi-open? r)
     (error <dbi-error> "<sqlite-result> already closed:" r))
-  (let* ([next-result (next-step)]
-         [eof? (eof-object? next-result)])
-    (proc (^[] eof?) (^ [] next-result))))
+
+  (let* ([result (~ r'seed)])
+    (proc
+     (^[] (eof-object? result))
+     (^ []
+       (begin0
+           result
+           (set! result (step)))))))
 
 (define-method dbi-make-connection ((d <sqlite-driver>) (options <string>)
                                     (options-alist <list>)
-                                    :key username password . args)
+                                    . args)
   ;; TODO sqlite uri
   ;; rwmode
+  ;; inmemory sqlite
   ;; https://www.sqlite.org/c3ref/open.html
-  (let* ([db (db-open file)])
-    (make <sqlite-connection>
-      :%db-handle db)))
+  ;; Supported options are: 
+  ;; file : Must be first option that has no value. 
+  ;; "db" : same as file
+  ;; Supported keywords are:
+  ;; TODO
+  (let-keywords args
+      restargs
+    (let1 file                          ;TODO maybe url
+        (match options-alist
+          [((maybe-db . #t) . rest-opts)
+           maybe-db]
+          [else
+           (assoc-ref options-alist "db" #f)])
+      (let* ([flags (logior SQLITE_OPEN_READWRITE)]
+             [db #?= (open-db file flags)])
+        (make <sqlite-connection>
+          :%db-handle db)))))
 
 ;; NOTE: dbd.sqlite module simply ignore preceeding sql statement result.
 ;; SELECT 1; SELECT 1, 2;  -> (#(1 2))
+;; SELECT 1, 2; UPDATE foo SET (col1 = "col1"); -> integer (dbd.sqlite specific)
 (define-method dbi-prepare ((c <sqlite-connection>) (sql <string>)
-                             :key pass-through . args)
-  (let* ([prepared (if pass-through
-                     (^ args
-                       ;; TODO Not like base dbi-prepare,
-                       ;; should not raise error if parameter is missing. 
-                       sql
-                       )
-                     (dbi-prepare-sql c sql))]
-         [stmt (prepare-stmt c prepared)]
-         [query (make <sqlite-query>
-                  :%stmt-handle stmt
-                  :connection c
-                  :prepared prepared)])
-    query))
+                            . args)
+  (let-keywords args
+      ([pass-through #f]
+       [strict-bind? #f]
+       . restargs)
+    (let* ([prepared (if pass-through
+                       (^ args
+                         ;; TODO Not like base dbi-prepare,
+                         ;; should not raise error if parameter is missing. 
+                         sql
+                         )
+                       (dbi-prepare-sql c sql))]
+           [sql (apply prepared args)]
+           [stmt (prepare-stmt (get-handle c) sql)]
+           [query (make <sqlite-query>
+                    :%stmt-handle stmt
+                    :strict-bind? strict-bind?
+                    :connection c
+                    :prepared prepared)])
+      query)))
 
 ;; SELECT -> return <sqlite-result>
 ;; Other DML -> Not defined in gauche info but UPDATE, DELETE, INSERT return integer
 ;;  that hold affected row count. Should not use integer if you need portable code.
-(define-method dbi-execute-using-connection ((c <sqlite-connection>) (q <dbi-query>)
+(define-method dbi-execute-using-connection ((c <sqlite-connection>) (q <sqlite-query>)
                                              (params <list>))
   ;; {dbi} このメソッドは‘dbi-execute’から呼ばれます。Qが保持するクエ リ
   ;; を発行しなければなりません。クエリがパラメータ化されている場合、
@@ -128,21 +178,22 @@
   ;; ブジェクトを返さなければなりません。
 
   (define (canonicalize-parameters source-params)
-    (let ([sql-params (stmt-parameters (~ q'%stmt-handle))]
+    (let ([sql-params (stmt-parameters (get-handle q))]
           [val-alist (map (match-lambda
                            [(k v)
                             (cons (keyword->string k) v)])
                           (slices source-params 2))])
       (map
        (^ [name]
-         (or (assoc-ref val-alist name)
+         (or (assoc-ref val-alist name #f)
              ;; TODO bind as NULL
-             ;; TODO or error? option?
-             #f))
+             (and (~ q'strict-bind?)
+                  (errorf "Parameter ~s not found" name))
+             ))
        sql-params)))
 
   (let* ([canon-params (canonicalize-parameters params)])
-    (receive (readable? result) (execute-stmt (~ q'%stmt-handle) canon-params)
+    (receive (readable? result) (execute-stmt (get-handle q) canon-params)
 
       ;;TODO compound-statement
       ;; close the first select stmt -> return last stmt result.
@@ -153,14 +204,15 @@
       ;; open-stream
       (if readable?
         (make <sqlite-result>
-          :source-query q)
+          :source-query q
+          :seed result)
         result))))
 
 (define-method dbi-open? ((c <sqlite-connection>))
-  (boolean (~ c '%db-handle)))
+  (boolean (get-handle c)))
 
 (define-method dbi-open? ((q <sqlite-query>))
-  (boolean (~ q '%stmt-handle)))
+  (boolean (get-handle q)))
 
 (define-method dbi-open? ((r <sqlite-result>))
   ;; TODO what should happen?
@@ -168,14 +220,14 @@
 
 ;; TODO db close all of statement should close?
 (define-method dbi-close ((c <sqlite-connection>))
-  (when (~ c '%db-handle)
-    (db-close (~ c '%db-handle))
-    (slot-set! c '%db-handle #f)))
+  (when (get-handle c)
+    (db-close (get-handle c))
+    (clear-handle! c)))
 
 (define-method dbi-close ((q <sqlite-query>))
-  (when (~ q '%stmt-handle)
-    (stmt-close (~ q'%stmt-handle))
-    (slot-set! q '%stmt-handle #f)))
+  (when (get-handle q)
+    (stmt-close (get-handle q))
+    (clear-handle! q)))
 
 (define-method dbi-close ((r <sqlite-result>))
   (when (~ r 'source-query)
