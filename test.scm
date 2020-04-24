@@ -51,7 +51,9 @@
 (dolist (q `("SELECT 1"
              "SELECT 1;"
              "SELECT 1; SELECT 2"
-             "SELECT 1; SELECT 2;"))
+             "SELECT 1; SELECT 2;"
+             ;; Last char is space
+             "SELECT 1; SELECT 2; "))
   (test* #"Query Preparation ~|q|" <sqlite-query>
          (dbi-prepare *connection* q)
          (^ [_ x] (class-of x))))
@@ -131,6 +133,7 @@ SELECT id, name FROM hoge" )
              :?1 "no meaning"
              ;; Not bound but no error.
              ;; :a4null #f
+             ;; nameless parameter
              8
              )
 
@@ -147,7 +150,7 @@ SELECT id, name FROM hoge" )
 ;; TODO Prepared reuse (need reset?)
 ;; TODO generator
 
-;; edge case
+;; TODO edge case
 
 
 
@@ -159,12 +162,10 @@ SELECT id, name FROM hoge" )
   (test* name (test-error)
         (sql->result query)))
 
-(error-test "TODO" "SELECT 1 FROM hoge1")
-(error-test "TODO" "SELECT 1 FROM hoge; No meaning statement;")
-
-;; TODO what should do?
-"SELECT 1 FROM hoge; ;"
-"SELECT 1 FROM hoge; ; "
+(error-test "No existing object" "SELECT 1 FROM hoge1")
+(error-test "First statement has no existing object" "SELECT 1 FROM hoge1; No meaning statement;")
+(error-test "Last statement has syntax error" "SELECT 1 FROM hoge; No meaning statement;")
+(error-test "Empty statement" "SELECT 1 ; ;")
 
 ;;;
 ;;; Teardown

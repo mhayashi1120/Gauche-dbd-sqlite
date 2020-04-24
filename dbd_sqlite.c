@@ -78,14 +78,22 @@ static ScmObj readColumns(sqlite3_stmt * pStmt)
 
 static void finalizeDBMaybe(ScmObj z, void *data)
 {
-printf("finalize DB %p\n", z);
+
+printf("TODO finalizing DB %p\n", z);
 fflush(stdout);
+
+    ScmSqliteDb * db = SCM_SQLITE_DB(z);
+
+    closeDB(db);
 }
 
 static void finalizeStmtMaybe(ScmObj z, void *data)
 {
-printf("finalize STMT %p\n", z);
+printf("TODO finalize STMT %p\n", z);
 fflush(stdout);
+
+ ScmSqliteStmt * stmt = SCM_SQLITE_STMT(z);
+ closeStmt(stmt);
 }
 
 /* duplicate sqlite3_errmsg and keep it as Scheme object. */
@@ -174,7 +182,7 @@ void closeDB(ScmSqliteDb * db)
 
     Scm_UnregisterFinalizer(SCM_OBJ(db));
 
-    /* TODO result */
+    /* TODO check result */
 }
 
 ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
@@ -211,7 +219,6 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
 	if (*zTail == '\0')
 	    break;
 
-	/* TODO */
 	int stepResult = sqlite3_step(pStmt);
 
 	/* ignore result until last statement. */
@@ -219,21 +226,20 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
 
 	if (stepResult != SQLITE_DONE &&
 	    stepResult != SQLITE_ROW) {
-	    errmsg = dupErrorMessage("todo");
+	    errmsg = dupErrorMessage("sqlite step failed");
 	    goto error;
 	}
 
 	pStmt = NULL;
 	zSql = zTail;
-	/* TODO sql has "SELECT 1; invalid statement;" */
-	/* "SELECT 1; \n" (space appended) what happen?*/
     }
     
     SCM_ASSERT(pStmt != NULL);
 
-    /* TODO register finalizer */
     ScmSqliteStmt * stmt = SCM_NEW(ScmSqliteStmt);
     SCM_SET_CLASS(stmt, SCM_CLASS_SQLITE_STMT);
+
+    Scm_RegisterFinalizer(SCM_OBJ(stmt), finalizeStmtMaybe, NULL);
 
     stmt->columns = readColumns(pStmt);
     stmt->db = db;
@@ -387,8 +393,11 @@ void closeStmt(ScmSqliteStmt * stmt)
     }
 
     sqlite3_finalize(stmt->ptr);
+
     stmt->ptr = NULL;
     stmt->db = NULL;
+
+    Scm_UnregisterFinalizer(SCM_OBJ(stmt));
 }
 
 /* TODO timeout */

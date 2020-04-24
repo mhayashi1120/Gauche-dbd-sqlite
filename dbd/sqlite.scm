@@ -219,7 +219,10 @@
           [(not name)
            ;; "anonymous parameters" e.g. "SELECT ?, ?"
            (assq-ref val-alist (+ index 1))
-           ;; TODO strict-bind?
+
+           ;; nameless parameter cannot check `strict-bind?`
+           ;; e.g. "SELECT ?999" -> this malicious example generate many nameless parameters.
+           ;; `pass-through` query should use named parameter, so no need to check on this case.
            ]
           [else
            (or (assoc-ref val-alist name #f)
