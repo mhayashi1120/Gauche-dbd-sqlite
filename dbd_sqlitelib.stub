@@ -70,8 +70,8 @@
 (define-enum-conditionally SQLITE_OPEN_PRIVATECACHE)
 (define-enum-conditionally SQLITE_OPEN_NOFOLLOW)
 
-(define-cproc open-db (path::<string> flags::<int>)
-  (return (openDB path flags)))
+(define-cproc open-db (path::<string> flags::<int> vfs)
+  (return (openDB path flags vfs)))
 
 (define-cproc db-close (db::<sqlite-db>) :: <void>
   (closeDB db))
@@ -84,6 +84,7 @@
 
 ;; TODO should return applied row count
 ;;   -> no! read-next return if not pair?
+;; return value (<boolean>  TODO
 (define-cproc execute-stmt (stmt::<sqlite-stmt> params::<list>)
   (bindParameters stmt params)
   (return (readResult stmt)))

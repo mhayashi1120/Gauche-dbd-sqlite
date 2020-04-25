@@ -67,6 +67,8 @@
  , name TEXT NOT NULL
  , created DATETIME NOT NULL
  , flag INTEGER
+ , value INTEGER
+ , rate FLOAT
  , PRIMARY KEY (id)
   );")])
          (dbi-execute q))
@@ -106,6 +108,13 @@ SELECT id, name FROM hoge" )
           `(#(1 2))
           "SELECT 1; SELECT 1, 2;" )
 
+(test-sql "TODO"
+          `(#(1 2 "three" 4.0 #f))
+          "SELECT ?, ?, ?, ?, ?"
+          1 2 "three" 4.0 #f)
+
+;; TODO not like pass-through u8vector not supported.
+
 ;; TODO last_insert_rowid
 ;; TODO check changes after UPDATE, DELETE, INSERT
 
@@ -137,6 +146,7 @@ SELECT id, name FROM hoge" )
              8
              )
 
+
 (let* ([q (dbi-prepare *connection* "SELECT :a" :pass-through #t :strict-bind? #t)])
   
   (test* "Strict bind (No parameter supplied.)" (test-error)
@@ -147,6 +157,9 @@ SELECT id, name FROM hoge" )
   ;;        (query->list q :a 1 :b 3))
   )
 
+;; TODO text insert -> select -> update -> select
+;; TODO long range test -> insert -> select -> update -> select
+;; TODO float test
 ;; TODO Prepared reuse (need reset?)
 ;; TODO generator
 

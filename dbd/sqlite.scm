@@ -66,6 +66,16 @@
      $ (cut string-tr <> "-" "_")
      $ keyword->string k))
 
+(define (sqlite-parse-flags s)
+  (rxmatch-case s
+    [#/^0x([0-9a-f]+)$/i (_ hex)
+     (string->number hex 16)]
+    [#/^0[0-7]+$/ (_ oct)
+     (string->number oct 8)]
+    [#/^([0-9]+)$/ (_ decimal)
+     (string->number decimal 10)]
+    [else
+     (errorf "Not a supported flags ~a" s)]) )
 
 ;;;
 ;;; Internal accessor
@@ -122,7 +132,7 @@
 
   (let* ([result (~ r'seed)])
     (proc
-     (^[] (eof-object? result))
+     (cut eof-object? result)
      (^ []
        (begin0
            result
@@ -136,24 +146,31 @@
                                     (options-alist <list>)
                                     . args)
   ;; TODO sqlite uri
-  ;; rwmode
   ;; inmemory sqlite
   ;; https://www.sqlite.org/c3ref/open.html
   ;; Supported options are: 
   ;; file : Must be first option that has no value. 
   ;; "db" : same as file
+  ;; "flags" : TODO not exported SQLITE_OPEN_*
+  ;; "vfs" : TODO Name of VFS module
+  ;; "timeout" : TODO
   ;; Supported keywords are:
   ;; TODO
   (let-keywords args
       restargs
     (let1 file                          ;TODO maybe url
         (match options-alist
-          [((maybe-db . #t) . rest-opts)
+          [((maybe-db . #t) . _)
            maybe-db]
           [else
            (assoc-ref options-alist "db" #f)])
-      (let* ([flags (logior SQLITE_OPEN_READWRITE)]
-             [db (open-db file flags)])
+      (let* ([flags (or (and-let1 opt (assoc-ref options-alist "flags")
+                          (sqlite-parse-flags opt))
+                        (logior SQLITE_OPEN_READWRITE
+                                ;; TODO other option
+                                ))]
+             [vfs (assoc-ref options-alist "vfs")]
+             [db (open-db file flags vfs)])
         (make <sqlite-connection>
           :%db-handle db)))))
 
@@ -170,21 +187,22 @@
        ;; "SELECT :a" with (:a = 1, :b = 1)
        [strict-bind? #f]
        . restargs)
-    (let* ([prepared (if pass-through
-                       (^ args
-                         ;; TODO Not like base dbi-prepare,
-                         ;; should not raise error if parameter is missing. 
-                         sql
-                         )
-                       (dbi-prepare-sql c sql))]
-           [sql (apply prepared args)]
-           [stmt (prepare-stmt (get-handle c) sql)]
-           [query (make <sqlite-query>
-                    :%stmt-handle stmt
-                    :strict-bind? strict-bind?
-                    :connection c
-                    :prepared prepared)])
-      query)))
+    (cond
+     [pass-through
+      (let* ([stmt (prepare-stmt (get-handle c) sql)]
+             [query (make <sqlite-query>
+                      :%stmt-handle stmt
+                      :strict-bind? strict-bind?
+                      :prepared (^ args sql)
+                      :connection c)]))]
+     [else
+      (let* ([prepared (dbi-prepare-sql c sql)]
+             [query (make <sqlite-query>
+                      ;; TODO not here
+                      :%stmt-handle #f
+                      :connection c
+                      :prepared prepared)])
+        query)])))
 
 ;; SELECT -> return <sqlite-result>
 ;; Other DML -> Not defined in gauche info but UPDATE, DELETE, INSERT return integer
@@ -230,16 +248,20 @@
                     (errorf "Parameter ~s not found" name)))]))
        sql-params)))
 
-  (let* ([canon-params (canonicalize-parameters params)])
-    (receive (readable? result) (execute-stmt (get-handle q) canon-params)
+  (define (real-prepare-stmt)
+    (cond
+     [(not (~ q'%stmt-handle))
+      (let* ([prepared (~ q'prepared)]
+             [sql (apply prepared params)]
+             [stmt (prepare-stmt (get-handle c) sql)])
+        (slot-set! q '%stmt-handle stmt)
+        params)]
+     [else
+      (canonicalize-parameters params)]))
 
-      ;;TODO compound-statement
-      ;; close the first select stmt -> return last stmt result.
-      ;; SELECT -> return relation. donot forgot close stmt
-      ;; other -> return ... DML -> count of changed rows other -> ?? undef
-      ;; compound update, delete ... -> sum of changed.
-      ;; 
-      ;; open-stream
+  (let1 real-params (real-prepare-stmt)
+    (receive (readable? result) (execute-stmt (get-handle q) real-params)
+
       (if readable?
         (make <sqlite-result>
           :source-query q

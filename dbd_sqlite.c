@@ -93,6 +93,7 @@ printf("TODO finalize STMT %p\n", z);
 fflush(stdout);
 
  ScmSqliteStmt * stmt = SCM_SQLITE_STMT(z);
+
  closeStmt(stmt);
 }
 
@@ -126,16 +127,17 @@ ScmObj getLibSqliteVersion()
     return SCM_MAKE_STR_IMMUTABLE(sqlite3_libversion());
 }
 
-ScmObj openDB(ScmString * filenameArg, int flags)
+ScmObj openDB(ScmString * filenameArg, int flags, ScmObj vfsArg)
 {
     const char * filename = Scm_GetStringConst(filenameArg);
     sqlite3 * pDb = NULL;
     ScmString * errmsg = NULL;
+    const char * vfs = (SCM_STRINGP(vfsArg)) ? Scm_GetStringConst(SCM_STRING(vfsArg)) : NULL;
 
     int result = sqlite3_open_v2(
 	filename, &pDb,
-	flags,              /* Flags */
-	NULL        /* Name of VFS module to use TODO */
+	flags,
+	vfs        /* Name of VFS module to use */
 	);
 
     if (result != SQLITE_OK) {
@@ -171,18 +173,29 @@ error:
 
 void closeDB(ScmSqliteDb * db)
 {
+    ScmString * errmsg = NULL;
+
     if (db->ptr == NULL) {
 	return;
     }
 
     int result = sqlite3_close_v2(db->ptr);
 
-    /* TODO close all statements ? close_v2 interface doc seems to say close automatically all. */
+    if (result != SQLITE_OK) {
+	errmsg = dupErrorMessage("Unable close db");
+	goto error;
+    }
+
     db->ptr = NULL;
 
     Scm_UnregisterFinalizer(SCM_OBJ(db));
 
-    /* TODO check result */
+error:
+
+    if (errmsg == NULL)
+	return;
+
+    raiseError(errmsg);
 }
 
 ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
@@ -218,6 +231,8 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
 
 	if (*zTail == '\0')
 	    break;
+
+	SCM_ASSERT(zTail != zSql);
 
 	int stepResult = sqlite3_step(pStmt);
 
@@ -259,7 +274,7 @@ error:
 /* SQLite Parameter allow ":", "$", "@", "?" prefix  */
 /* This function return list that contains ScmString with those prefix */
 /* e.g. "SELECT :hoge, @foo" sql -> (":hoge" "@foo")  */
-/* TODO call before bind sqlite3_reset(stmt); */
+/* NOTE: edge case, Programmer can choose "SELECT ?999" as a parameter. */
 ScmObj listParameters(ScmSqliteStmt * stmt)
 {
     SCM_ASSERT(stmt->ptr != NULL);
@@ -279,7 +294,6 @@ ScmObj listParameters(ScmSqliteStmt * stmt)
 	}
     }
 
-    /* edge case: Programmer can choose "SELECT ?999" as parameter. */
     return result;
 }
 
@@ -289,6 +303,11 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
     SCM_ASSERT(SCM_LISTP(params));
 
     sqlite3_stmt * pStmt = stmt->ptr;
+
+    int clearResult = sqlite3_clear_bindings(pStmt);
+
+    /* TODO check result */
+
     ScmSize len = Scm_Length(params);
 
     /* TODO clear_bindings -> sqlite3_reset()? clear_bindings?*/
@@ -312,8 +331,7 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 	    /* TODO other inexact value? */
 	    const double f = Scm_GetDouble(scmValue);
 	    sqlite3_bind_double(pStmt, i, f);
-	} else if (SCM_UVECTORP(scmValue)) {
-	    /* TODO restrict to just u8? */
+	} else if (SCM_UVECTORP(scmValue) && SCM_UVECTOR_SUBTYPE_P(scmValue, SCM_UVECTOR_U8)) {
 	    const int size = SCM_UVECTOR_SIZE(scmValue);
 	    const unsigned char * blob = SCM_UVECTOR_ELEMENTS(scmValue);
 	    /* TODO fifth arg */
@@ -321,7 +339,8 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 	} else if (SCM_FALSEP(scmValue)) {
 	    sqlite3_bind_null(pStmt, i);
 	} else {
-	    SCM_ASSERT(0);
+	    /* TODO show the value. */
+	    Scm_Error("Not a supported type ");
 	}
 
 	params = SCM_CDR(params);
@@ -333,7 +352,6 @@ ScmObj readLastChanges(ScmSqliteStmt * stmt)
 {
     int changes = sqlite3_changes(stmt->db->ptr);
 
-    /* TODO int size */
     return Scm_MakeInteger(changes);
 }
 
