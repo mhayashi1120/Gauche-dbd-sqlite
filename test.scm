@@ -67,17 +67,21 @@
  , name TEXT NOT NULL
  , created DATETIME NOT NULL
  , flag INTEGER
- , value INTEGER
- , rate FLOAT
+ , value OBJECT
  , PRIMARY KEY (id)
   );")])
          (dbi-execute q))
        (^ [_ x] x #t))
 
 (use gauche.collection)
+(use util.match)
 
 (define (query->list q . params)
-  (map identity (apply dbi-execute q params)))
+  (match (apply dbi-execute q params)
+    [(? (^x (is-a? x <relation>)) r)
+     (map identity r)]
+    [x
+     x]))
 
 (define (sql->result sql . params)
   (let* ([q (dbi-prepare *connection* sql)])
@@ -108,15 +112,17 @@ SELECT id, name FROM hoge" )
           `(#(1 2))
           "SELECT 1; SELECT 1, 2;" )
 
-(test-sql "TODO"
+(test-sql "text.sql parser prepared"
           `(#(1 2 "three" 4.0 #f))
           "SELECT ?, ?, ?, ?, ?"
           1 2 "three" 4.0 #f)
 
-;; TODO not like pass-through u8vector not supported.
+(test-sql "Not like pass-through query u8vector not supported."
+          (test-error)
+          "SELECT ?"
+          #u8(1 2 3))
 
 ;; TODO last_insert_rowid
-;; TODO check changes after UPDATE, DELETE, INSERT
 
 ;;;
 ;;; Pass through
@@ -134,8 +140,8 @@ SELECT id, name FROM hoge" )
 (test-sql* "Select by index parameter 5" `(#("n1")) "SELECT name FROM hoge WHERE id = ?4" #f #f #f :?4 1)
 
 (test-sql* "Select binding parameter"
-           `(#("1" 2 #u8(5 6) "1" #f 8))
-             "SELECT :a1, $a2, @a3, ?1, :a4null, ?"
+           `(#("1" 2 #u8(5 6) "1" #f 8 "LAST"))
+             "SELECT :a1, $a2, @a3, ?1, :a4null, ?, :last"
              :a1 "1"
              :$a2 2
              :@a3 #u8(5 6)
@@ -144,7 +150,7 @@ SELECT id, name FROM hoge" )
              ;; :a4null #f
              ;; nameless parameter
              8
-             )
+             :last "LAST")
 
 
 (let* ([q (dbi-prepare *connection* "SELECT :a" :pass-through #t :strict-bind? #t)])
@@ -157,8 +163,30 @@ SELECT id, name FROM hoge" )
   ;;        (query->list q :a 1 :b 3))
   )
 
-;; TODO text insert -> select -> update -> select
-;; TODO long range test -> insert -> select -> update -> select
+(dolist (testcase `(("Positive max integer" #x7fffffffffffffff)
+                    ("Negative max integer" #x-8000000000000000)
+                    ("Zero" 0)
+                    ("Overflow long long (64bit integer)" #x8000000000000000 ,(test-error))
+                    ("Overflow long long (64bit integer)" #x-8000000000000001 ,(test-error))
+                    ("Large text" ,(make-string #xfffff #\a))
+                    ))
+  (match testcase
+    [(name value)
+     (test-sql* #"~|name| UPDATE" 1
+                "UPDATE hoge SET value = :value WHERE id = :id "
+                :value value
+                :id 1)
+
+     (test-sql* #"~|name| SELECT" `(#(,value))
+                "SELECT value FROM hoge WHERE id = :id "
+                :id 1)]
+
+    [(name value expected)
+     (test-sql* name expected
+           "UPDATE hoge SET value = :value WHERE id = :id "
+           :value #x8000000000000000
+           :id 1)]))
+
 ;; TODO float test
 ;; TODO Prepared reuse (need reset?)
 ;; TODO generator

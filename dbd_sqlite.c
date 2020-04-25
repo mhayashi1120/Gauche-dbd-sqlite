@@ -89,6 +89,7 @@ fflush(stdout);
 
 static void finalizeStmtMaybe(ScmObj z, void *data)
 {
+    /* TODO when close by close_v2 then ptr may point to invalid  */
 printf("TODO finalize STMT %p\n", z);
 fflush(stdout);
 
@@ -304,13 +305,11 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 
     sqlite3_stmt * pStmt = stmt->ptr;
 
-    int clearResult = sqlite3_clear_bindings(pStmt);
-
-    /* TODO check result */
+    /* Does not describe about return value. */
+    sqlite3_clear_bindings(pStmt);
 
     ScmSize len = Scm_Length(params);
 
-    /* TODO clear_bindings -> sqlite3_reset()? clear_bindings?*/
     /* Bind parameter index start from 1 not 0 */
     for (int i = 1; i <= len; i++) {
 	ScmObj scmValue = SCM_CAR(params);
