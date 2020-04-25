@@ -16,32 +16,6 @@
 (define-cproc sqlite-libversion-number ()
   (return (getLibSqliteVersionNumber)))
 
-"
- static void printSqliteDb(ScmObj obj, ScmPort *out, ScmWriteContext *ctx)
- {
-   Scm_Printf(out, \"#<sqlite-db %p>\", obj);
- }
-
-
- static void printSqliteStmt(ScmObj obj, ScmPort *out, ScmWriteContext *ctx)
- {
-   Scm_Printf(out, \"#<sqlite-stmt %p>\", obj);
- }
-"
-
-;; (define-cptr <sqlite-db> :private
-;;   "ScmSqliteDb*" "Scm_SqliteDbClass"
-;;   "SCM_SQLITE_DB_P" "SCM_SQLITE_DB_BOX" "SCM_SQLITE_DB_UNBOX"
-;;   ;; #f #f #f
-;;   (print "printSqliteDb")
-;;   )
-
-;; (define-cptr <sqlite-stmt> :private
-;;   "ScmSqliteStmt*" "Scm_SqliteStmtClass"
-;;   "SCM_SQLITE_STMT_P" "SCM_SQLITE_STMT_BOX" "SCM_SQLITE_STMT_UNBOX"
-;;   ;; #f #f #f
-;;   (print "printSqliteStmt"))
-
 (define-cclass <sqlite-db> "ScmSqliteDb*" "Scm_SqliteDbClass"
   ()
   ()
@@ -89,16 +63,9 @@
   (bindParameters stmt params)
   (return (readResult stmt)))
 
-(define-cproc stmt-is-readable (stmt::<sqlite-stmt>)
-  ;; TODO
-  )
-
 (define-cproc stmt-read-columns (stmt::<sqlite-stmt>)
   ;; Return pair
   (return (-> stmt columns)))
-
-;; (define-cproc open-stmt-reader (stmt::<sqlite-stmt>)
-;;   )
 
 (define-cproc stmt-read-next (stmt::<sqlite-stmt>)
   ;; TODO Return (readable? , vector | EOF)
