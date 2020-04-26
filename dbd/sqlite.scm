@@ -133,7 +133,7 @@
 ;; 2. x->generator
 (define-method call-with-iterator ((r <sqlite-result>) proc . option)
   (define (step)
-    (values-ref (stmt-read-next (get-handle r)) 1))
+    (stmt-read-next (get-handle r)))
   
   (unless (dbi-open? r)
     (error <dbi-error> "<sqlite-result> already closed:" r))
@@ -280,13 +280,14 @@
       (canonicalize-parameters params)]))
 
   (let1 real-params (ensure-prepare&params)
-    (receive (readable? result) (execute-stmt (get-handle q) real-params)
-
-      (if readable?
-        (make <sqlite-result>
-          :source-query q
-          :seed result)
-        result))))
+    (match (execute-stmt (get-handle q) real-params)
+      [(or (? vector? result)
+           (? eof-object? result))
+       (make <sqlite-result>
+         :source-query q
+         :seed result)]
+      [result
+       result])))
 
 (define-method dbi-open? ((c <sqlite-connection>))
   (boolean (get-handle c)))

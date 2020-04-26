@@ -382,21 +382,14 @@ ScmObj readResult(ScmSqliteStmt * stmt)
     {
     case SQLITE_DONE:
 	{
-	ScmObj second = NULL;
-	ScmObj result = NULL;
-
 	if (stmt->columns != NULL) { 
-	    second = SCM_EOF;
-	    result = Scm_Values2(SCM_TRUE, second);
+	    return SCM_EOF;
 	} else {
-	    second = readLastChanges(stmt);
-	    result = Scm_Values2(SCM_FALSE, second);
+	    return readLastChanges(stmt);
 	}
-
-	return result;
 	}
     case SQLITE_ROW:
-	return Scm_Values2(SCM_TRUE, readRow(stmt->ptr));
+	return readRow(stmt->ptr);
     /* case SQLITE_BUSY: */
     /* 	errmsg = dupErrorMessage("Database is busy."); */
     /* 	goto error; */

@@ -246,6 +246,8 @@ SELECT id, name FROM hoge" )
 ;; TODO float test
 ;; TODO edge case
 ;; TODO last_insert_rowid
+;; TODO <relation> test
+;; TODO <sequence> test
 
 ;;;
 ;;; SQL syntax error
