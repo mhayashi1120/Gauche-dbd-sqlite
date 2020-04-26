@@ -60,6 +60,7 @@
 ;;   -> no! read-next return if not pair?
 ;; return value (<boolean>  TODO
 (define-cproc execute-stmt (stmt::<sqlite-stmt> params::<list>)
+  (resetStmt stmt)
   (bindParameters stmt params)
   (return (readResult stmt)))
 

@@ -53,6 +53,7 @@ extern void bindParameters(ScmSqliteStmt * stmt, ScmObj params);
 extern ScmObj openDB(ScmString * filenameArg, int flags, ScmObj vfsArg);
 extern void closeDB(ScmSqliteDb * db);
 extern ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql);
+extern void resetStmt(ScmSqliteStmt * stmt);
 extern void closeStmt(ScmSqliteStmt * stmt);
 extern ScmObj listParameters(ScmSqliteStmt * stmt);
 extern ScmObj readLastChanges(ScmSqliteStmt * stmt);

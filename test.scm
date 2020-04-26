@@ -42,8 +42,6 @@
 (test* "Sqlite connection is open" #t
        (dbi-open? *connection*))
 
-;; TODO connect option
-
 ;;;
 ;;; DDL
 ;;;
@@ -76,7 +74,7 @@
 (use gauche.collection)
 (use util.match)
 
-(define (query->list q . params)
+(define (query->result q . params)
   (match (apply dbi-execute q params)
     [(? (^x (is-a? x <relation>)) r)
      (map identity r)]
@@ -85,7 +83,7 @@
 
 (define (sql->result sql . params)
   (let* ([q (dbi-prepare *connection* sql)])
-    (apply query->list q params)))
+    (apply query->result q params)))
 
 (define (test-sql name expected sql . params)
   (test* name expected
@@ -93,7 +91,7 @@
 
 (define (sql->result* sql . params)
   (let* ([q (dbi-prepare *connection* sql :pass-through #t)])
-    (apply query->list q params)))
+    (apply query->result q params)))
 
 (define (test-sql* name expected sql . params)
   (test* name expected
@@ -156,44 +154,84 @@ SELECT id, name FROM hoge" )
 (let* ([q (dbi-prepare *connection* "SELECT :a" :pass-through #t :strict-bind? #t)])
   
   (test* "Strict bind (No parameter supplied.)" (test-error)
-         (query->list q))
+         (query->result q))
 
   ;; TODO reconsider
   ;; (test* "Strict bind (Extra parameter supplied.)" (test-error)
-  ;;        (query->list q :a 1 :b 3))
+  ;;        (query->result q :a 1 :b 3))
   )
 
-(dolist (testcase `(("Positive max integer" #x7fffffffffffffff)
-                    ("Negative max integer" #x-8000000000000000)
-                    ("Zero" 0)
-                    ("Overflow long long (64bit integer)" #x8000000000000000 ,(test-error))
-                    ("Overflow long long (64bit integer)" #x-8000000000000001 ,(test-error))
-                    ("Large text" ,(make-string #xfffff #\a))
-                    ))
-  (match testcase
-    [(name value)
-     (test-sql* #"~|name| UPDATE" 1
-                "UPDATE hoge SET value = :value WHERE id = :id "
-                :value value
-                :id 1)
+(test-log "Range log for pass-through query")
+(let ([update (dbi-prepare *connection* "UPDATE hoge SET value = :value WHERE id = :id " :pass-through #t)]
+      [select (dbi-prepare *connection* "SELECT value FROM hoge WHERE id = :id " :pass-through #t)])
+  (dolist (testcase `(("Positive max integer" #x7fffffffffffffff)
+                      ("Negative max integer" #x-8000000000000000)
+                      ("Zero" 0)
+                      ("Overflow long long (64bit integer)" #x8000000000000000 ,(test-error))
+                      ("Overflow long long (64bit integer)" #x-8000000000000001 ,(test-error))
+                      ("Large text" ,(make-string #xff #\a))
+                      ))
+    (match testcase
+      [(name value)
+       (test* #"~|name| UPDATE"
+              1
+              (query->result
+               update 
+               :value value
+               :id 1))
 
-     (test-sql* #"~|name| SELECT" `(#(,value))
-                "SELECT value FROM hoge WHERE id = :id "
-                :id 1)]
+       (test* #"~|name| SELECT"
+              `(#(,value))
+              (query->result
+               select
+               :id 1))]
 
-    [(name value expected)
-     (test-sql* name expected
-           "UPDATE hoge SET value = :value WHERE id = :id "
-           :value #x8000000000000000
-           :id 1)]))
+      [(name value expected)
+       (test* name
+              expected
+              (query->result
+               update
+               :value value
+               :id 1))])))
 
+(test-log "Transaction test")
+(sql->result "BEGIN;")
+(test-sql* "Insert in transaction"
+           1
+           "INSERT INTO hoge (id, name, value, created) VALUES (:id, :name, :value, :created)"
+           :id 4
+           :name "name4"
+           :value 10
+           :created "2020-04-01")
+(test-sql* "Select in transaction found."
+           `(#(4))
+           "SELECT id FROM hoge WHERE id = :id"
+           :id 4)
+(sql->result "ROLLBACK;")
+(test-sql* "Select after rollback is not found"
+           `()
+           "SELECT id FROM hoge WHERE id = :id"
+           :id 4)
+
+(sql->result "BEGIN;")
+(test-sql* "Insert in transaction"
+           1
+           "INSERT INTO hoge (id, name, value, created) VALUES (:id, :name, :value, :created)"
+           :id 4
+           :name "name4"
+           :value 10
+           :created "2020-04-01")
+(sql->result "COMMIT;")
+(test-sql* "Select in transaction found."
+           `(#(4))
+           "SELECT id FROM hoge WHERE id = :id"
+           :id 4)
+
+;; TODO test stmt closing
 ;; TODO float test
 ;; TODO Prepared reuse (need reset?)
-;; TODO generator
-
+;; TODO generator (other word cursor)
 ;; TODO edge case
-
-
 
 ;;;
 ;;; SQL syntax error
@@ -216,6 +254,9 @@ SELECT id, name FROM hoge" )
 
 (test* "Connection is closed" #f
        (dbi-open? *connection*))
+
+;; TODO connect option
+
 
 ;; If you don't want `gosh' to exit with nonzero status even if
 ;; the test fails, pass #f to :exit-on-failure.

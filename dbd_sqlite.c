@@ -298,6 +298,17 @@ ScmObj listParameters(ScmSqliteStmt * stmt)
     return result;
 }
 
+void resetStmt(ScmSqliteStmt * stmt)
+{
+    SCM_ASSERT(stmt->ptr != NULL);
+
+    /* this call does not reset binding parameter. */
+    sqlite3_reset(stmt->ptr);
+
+
+    /* TODO check result? */
+}
+
 void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 {
     SCM_ASSERT(stmt->ptr != NULL);
@@ -361,9 +372,9 @@ ScmObj readResult(ScmSqliteStmt * stmt)
 
     switch (result)
     {
-    case SQLITE_BUSY:
-	errmsg = dupErrorMessage("Database is busy.");
-	goto error;
+    /* case SQLITE_BUSY: */
+    /* 	errmsg = dupErrorMessage("Database is busy."); */
+    /* 	goto error; */
     case SQLITE_DONE:
 	{
 	ScmObj second = NULL;
@@ -377,23 +388,22 @@ ScmObj readResult(ScmSqliteStmt * stmt)
 	    result = Scm_Values2(SCM_FALSE, second);
 	}
 
-	sqlite3_finalize(stmt->ptr);
-	stmt->ptr = NULL;
 	return result;
 	}
     case SQLITE_ROW:
 	return Scm_Values2(SCM_TRUE, readRow(stmt->ptr));
-    case SQLITE_ERROR:
+    /* case SQLITE_MISUSE: */
+    /* 	errmsg = dupErrorMessage("Statement is in misuse."); */
+    /* 	goto error; */
+    default:
+	/* V2 interface */
 	errmsg = getErrorMessage(stmt->db->ptr);
 	goto error;
-    case SQLITE_MISUSE:
-	errmsg = dupErrorMessage("Statement is in misuse.");
-	goto error;
-    default:
-	SCM_ASSERT(0);
+	/* SCM_ASSERT(0); */
     }
 
 error:
+    /* TODO test when error */
     sqlite3_finalize(stmt->ptr);
 
     if (errmsg == NULL)
