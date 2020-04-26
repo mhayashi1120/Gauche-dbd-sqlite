@@ -28,7 +28,7 @@ LDFLAGS = "@LDFLAGS@"
 PACKAGE   = Gauche-dbd-sqlite
 
 ARCHFILES = dbd_sqlite.$(SOEXT)
-SCMFILES  = $(srcdir)/dbd_sqlite.scm
+SCMFILES  = $(srcdir)/dbd/sqlite.scm
 HEADERS   =
 
 TARGET    = $(ARCHFILES)

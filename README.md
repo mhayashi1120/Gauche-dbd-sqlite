@@ -35,7 +35,7 @@ Not portable code
 
 ## History
 
-TODO とりあえず書きはじめ。これ書いていくつかの TODO fix したらとりあえず github に up する
+TODO とりあえず書きはじめ。これ書いていくつかの TODO fix して、手許の既存スクリプトが動作したらとりあえず github に up する
 
 This similar module exists here:
 https://github.com/mhayashi1120/Gauche-dbd-sqlite3/
