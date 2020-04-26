@@ -101,11 +101,6 @@
 (define-method get-handle ((r <sqlite-result>))
   (get-handle (~ r 'source-query)))
 
-;; (define-method initialize ((self <sqlite-driver>))
-;;   (next-method)
-;; )
-
-
 ;;;
 ;;; <relation> API
 ;;;
@@ -201,10 +196,9 @@
                             . args)
   (let-keywords args
       ([pass-through #f]
-       ;; TODO just effect pass-through is #t
-       ;; TODO reconsider.
-       ;; "SELECT :a" with (:b = 1)
-       ;; "SELECT :a" with (:a = 1, :b = 1)
+       ;; This option just effect `pass-through` is #t
+       ;; Error! "SELECT :a" with (:b = 1)
+       ;; TODO "SELECT :a" with (:a = 1, :b = 1)
        [strict-bind? #f]
        . restargs)
     (cond
@@ -218,7 +212,8 @@
      [else
       (let* ([prepared (dbi-prepare-sql c sql)]
              [query (make <sqlite-query>
-                      ;; TODO not here
+                      ;; This case not yet prepare statement.
+                      ;; after accept user arguments from `dbi-execute` interface.
                       :%stmt-handle #f
                       :connection c
                       :prepared prepared)])
@@ -226,18 +221,12 @@
 
 ;; SELECT -> return <sqlite-result>
 ;; Other DML -> Not defined in gauche info but UPDATE, DELETE, INSERT return integer
-;;  that hold affected row count. Should not use integer if you need portable code.
+;;  that hold affected row count. Should not use this extension if you need portable code.
 ;; PARAMS: TODO keyword expand to bind parameter and others position parameter in the PARAMS.
 ;;   e.g. TODO
-;; No need to mixture index parameter and named parameter. but shoud working.
+;; NOTE: No need to mixture index parameter and named parameter, but should work.
 (define-method dbi-execute-using-connection ((c <sqlite-connection>) (q <sqlite-query>)
                                              (params <list>))
-  ;; {dbi} このメソッドは‘dbi-execute’から呼ばれます。Qが保持するクエ リ
-  ;; を発行しなければなりません。クエリがパラメータ化されている場合、
-  ;; DBI-EXECUTEに与えられた実際のパラメータはPARAMS引数に渡さ れます。
-  
-  ;; Qが‘select’-型のクエリの場合は、このメソッドは適切なリレー ションオ
-  ;; ブジェクトを返さなければなりません。
 
   (define (canonicalize-parameters source-params)
     (let ([sql-params (list-parameters (get-handle q))]
@@ -268,8 +257,7 @@
                     (errorf "Parameter ~s not found" name)))]))
        sql-params)))
 
-  ;; TODO -> ensure-prepare
-  (define (real-prepare-stmt)
+  (define (ensure-prepare&params)
     (cond
      [(not (~ q'%stmt-handle))
       (let* ([prepared (~ q'prepared)]
@@ -280,7 +268,7 @@
      [else
       (canonicalize-parameters params)]))
 
-  (let1 real-params (real-prepare-stmt)
+  (let1 real-params (ensure-prepare&params)
     (receive (readable? result) (execute-stmt (get-handle q) real-params)
 
       (if readable?
