@@ -13,6 +13,10 @@
    sqlite-libversion-number sqlite-libversion
 
    call-with-iterator
+
+   relation-column-names relation-accessor
+   relation-modifier relation-rows
+
    )
   )
 (select-module dbd.sqlite)
@@ -35,7 +39,8 @@
 (define-class <sqlite-query> (<dbi-query>)
   (
    (%stmt-handle :init-keyword :%stmt-handle)
-   (%sql :init-keyword :%sql)
+   ;; TODO
+   ;; (%sql :init-keyword :%sql)
    (strict-bind? :init-keyword :strict-bind?)
    ))
 
@@ -96,7 +101,6 @@
 (define-method get-handle ((r <sqlite-result>))
   (get-handle (~ r 'source-query)))
 
-
 ;; (define-method initialize ((self <sqlite-driver>))
 ;;   (next-method)
 ;; )
@@ -107,22 +111,34 @@
 ;;;
 
 (define-method relation-column-names ((r <sqlite-result>))
-  (stmt-read-columns (get-handle r)))
+  (list-columns (get-handle r)))
 
 (define-method relation-accessor ((r <sqlite-result>))
   (^ [t c]
-    ;; TODO
-    (vector-ref t (vector-index (^ [x] (string=? c x)) t))))
+    (and-let* ([index (vector-index (^ [x] (string-ci=? c x)) t)]
+               [(< index (vector-length t))])
+      (vector-ref t index))))
 
 (define-method relation-modifier ((r <sqlite-result>))
   #f)
 
 (define-method relation-rows ((r <sqlite-result>))
-  r)
+  (let loop ([res '()]
+             [item (~ r'seed)])
+    (cond
+     [(eof-object? item)
+      (reverse! res)]
+     [else
+      (loop (cons item res)
+            (stmt-read-next (get-handle r)))])))
 
 ;;;
 ;;; <sequence> API
 ;;;
+
+;; This generic method desired work with:
+;; 1. map
+;; 2. x->generator
 (define-method call-with-iterator ((r <sqlite-result>) proc . option)
   (define (step)
     (values-ref (stmt-read-next (get-handle r)) 1))
@@ -130,7 +146,11 @@
   (unless (dbi-open? r)
     (error <dbi-error> "<sqlite-result> already closed:" r))
 
-  (let* ([result (~ r'seed)])
+  ;; Forcibly read from first.
+  ;; Do not use seed
+  (reset-stmt (get-handle r))
+
+  (let* ([result (step)])
     (proc
      (cut eof-object? result)
      (^ []
@@ -220,7 +240,7 @@
   ;; ブジェクトを返さなければなりません。
 
   (define (canonicalize-parameters source-params)
-    (let ([sql-params (stmt-parameters (get-handle q))]
+    (let ([sql-params (list-parameters (get-handle q))]
           [val-alist (let loop ([ps source-params]
                                 [res '()]
                                 [i 1])
@@ -248,6 +268,7 @@
                     (errorf "Parameter ~s not found" name)))]))
        sql-params)))
 
+  ;; TODO -> ensure-prepare
   (define (real-prepare-stmt)
     (cond
      [(not (~ q'%stmt-handle))

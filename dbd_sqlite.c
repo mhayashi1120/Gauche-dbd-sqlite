@@ -116,8 +116,6 @@ static void raiseError(ScmString * msg)
     Scm_Error(Scm_GetStringConst(msg));
 }
 
-/* TODO sqlite3_last_insert_rowid -> no need just call SQL if need.*/
-
 ScmObj getLibSqliteVersionNumber()
 {
     return Scm_MakeInteger(sqlite3_libversion_number());
@@ -134,6 +132,8 @@ ScmObj openDB(ScmString * filenameArg, int flags, ScmObj vfsArg)
     sqlite3 * pDb = NULL;
     ScmString * errmsg = NULL;
     const char * vfs = (SCM_STRINGP(vfsArg)) ? Scm_GetStringConst(SCM_STRING(vfsArg)) : NULL;
+
+    /* TODO option too many. let alist Scm_Assoc(SCM_CMP_EQUAL */
 
     int result = sqlite3_open_v2(
 	filename, &pDb,

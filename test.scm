@@ -227,10 +227,21 @@ SELECT id, name FROM hoge" )
            "SELECT id FROM hoge WHERE id = :id"
            :id 4)
 
+(test-log "Generator (cursor) test")
+(use gauche.generator)
+
+(let* ([result (dbi-execute (dbi-prepare *connection* "SELECT id FROM hoge ORDER BY id"))]
+       [gen (x->generator result)]
+       )
+  (test* "generator (like cursor) 1" #(1) (gen))
+  (test* "generator (like cursor) 2" #(2) (gen))
+  (test* "Map all results" '(#(1) #(2) #(3) #(4)) (map identity result))
+  (test* "Again Map all results" '(#(1) #(2) #(3) #(4)) (map identity result)))
+
+
 ;; TODO test stmt closing
 ;; TODO float test
 ;; TODO Prepared reuse (need reset?)
-;; TODO generator (other word cursor)
 ;; TODO edge case
 
 ;;;

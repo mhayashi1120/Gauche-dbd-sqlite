@@ -53,7 +53,10 @@
 (define-cproc prepare-stmt (db::<sqlite-db> query::<string>)
   (return (prepareStmt db query)))
 
-(define-cproc stmt-parameters (stmt::<sqlite-stmt>)
+(define-cproc reset-stmt (stmt::<sqlite-stmt>) :: <void>
+  (resetStmt stmt))
+
+(define-cproc list-parameters (stmt::<sqlite-stmt>)
   (return (listParameters stmt)))
 
 ;; TODO should return applied row count
@@ -64,7 +67,7 @@
   (bindParameters stmt params)
   (return (readResult stmt)))
 
-(define-cproc stmt-read-columns (stmt::<sqlite-stmt>)
+(define-cproc list-columns (stmt::<sqlite-stmt>)
   ;; Return pair
   (return (-> stmt columns)))
 
