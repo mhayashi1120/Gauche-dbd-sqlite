@@ -24,7 +24,6 @@
 ;; Loads extension
 (dynamic-load "dbd_sqlite")
 
-
 ;;;
 ;;; DBI class
 ;;;
@@ -39,8 +38,6 @@
 (define-class <sqlite-query> (<dbi-query>)
   (
    (%stmt-handle :init-keyword :%stmt-handle)
-   ;; TODO
-   ;; (%sql :init-keyword :%sql)
    (strict-bind? :init-keyword :strict-bind?)
    ))
 
@@ -142,7 +139,13 @@
     (error <dbi-error> "<sqlite-result> already closed:" r))
 
   ;; Forcibly read from first.
-  ;; Do not use seed
+  ;; Do not use seed.
+
+  ;; NOTE: When SELECT statement return 3 rows.
+  ;; 1. sqlite3_step 3 times then reach EOF.
+  ;; 2. sqlite3_step 1 time read EOF.
+  ;; 3. again execute sqlite3_step seems to read from first (!).
+  ;;  this make strange behavior as <sequence> .
   (reset-stmt (get-handle r))
 
   (let* ([result (step)])
@@ -166,20 +169,21 @@
      (cons "flags" (or (and-let1 opt (assoc-ref options-alist "flags")
                          (sqlite-parse-number opt))
                        (logior SQLITE_OPEN_READWRITE
-                               ;; TODO other option
-                               )))
+                               SQLITE_OPEN_CREATE)))
      (cons "vfs" (assoc-ref options-alist "vfs"))
      (cons "timeout" (or (and-let1 opt (assoc-ref options-alist "timeout")
                            (sqlite-parse-number opt))
                          #f))))
 
-  ;; TODO sqlite uri
-  ;; TODO inmemory sqlite
   ;; To read more details visit: https://www.sqlite.org/c3ref/open.html
+  ;; TODO e.g. /path/to/sqlite.db;memory;uri;
   ;; Supported options are: 
   ;; file : Must be first option that has no value. 
   ;; "db" : same as file
-  ;; "flags" : Flags integer pass to sqlite3_open_v2 .
+  ;; "flags" : Flags integer pass to sqlite3_open_v2 . (e.g. TODO)
+  ;; "memory" : TODO
+  ;; "uri" : TODO
+  ;; "readonly" : TODO
   ;; "vfs" : Name of VFS module.
   ;; "timeout" : milliseconds of timeout when read/execute query.
   ;; Supported keywords are none.
@@ -291,23 +295,23 @@
   (boolean (get-handle q)))
 
 (define-method dbi-open? ((r <sqlite-result>))
-  ;; TODO what should happen?
-  (dbi-open? (~ r 'source-query)))
+  (and-let1 q (~ r 'source-query)
+    (dbi-open? q)))
 
 ;; TODO db close all of statement should close?
 (define-method dbi-close ((c <sqlite-connection>))
-  (when (get-handle c)
-    (db-close (get-handle c))
+  (and-let1 h (get-handle c)
+    (db-close h)
     (clear-handle! c)))
 
 (define-method dbi-close ((q <sqlite-query>))
-  (when (get-handle q)
-    (stmt-close (get-handle q))
+  (and-let1 h (get-handle q)
+    (close-stmt h)
     (clear-handle! q)))
 
 (define-method dbi-close ((r <sqlite-result>))
-  (when (~ r 'source-query)
-    (dbi-close (~ r 'source-query))
+  (and-let1 q (~ r 'source-query)
+    (dbi-close q)
     (slot-set! r 'source-query #f)))
 
 ;; Probablly no need

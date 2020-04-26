@@ -78,10 +78,6 @@ static ScmObj readColumns(sqlite3_stmt * pStmt)
 
 static void finalizeDBMaybe(ScmObj z, void *data)
 {
-
-printf("TODO finalizing DB %p\n", z);
-fflush(stdout);
-
     ScmSqliteDb * db = SCM_SQLITE_DB(z);
 
     closeDB(db);
@@ -89,13 +85,11 @@ fflush(stdout);
 
 static void finalizeStmtMaybe(ScmObj z, void *data)
 {
-    /* TODO when close by close_v2 then ptr may point to invalid  */
-printf("TODO finalize STMT %p\n", z);
-fflush(stdout);
+    /* TODO when close by close_v2 , ptr may point to invalid location? */
 
- ScmSqliteStmt * stmt = SCM_SQLITE_STMT(z);
+    ScmSqliteStmt * stmt = SCM_SQLITE_STMT(z);
 
- closeStmt(stmt);
+    closeStmt(stmt);
 }
 
 /* duplicate sqlite3_errmsg and keep it as Scheme object. */
@@ -392,9 +386,6 @@ ScmObj readResult(ScmSqliteStmt * stmt)
 
     switch (result)
     {
-    /* case SQLITE_BUSY: */
-    /* 	errmsg = dupErrorMessage("Database is busy."); */
-    /* 	goto error; */
     case SQLITE_DONE:
 	{
 	ScmObj second = NULL;
@@ -412,6 +403,9 @@ ScmObj readResult(ScmSqliteStmt * stmt)
 	}
     case SQLITE_ROW:
 	return Scm_Values2(SCM_TRUE, readRow(stmt->ptr));
+    /* case SQLITE_BUSY: */
+    /* 	errmsg = dupErrorMessage("Database is busy."); */
+    /* 	goto error; */
     /* case SQLITE_MISUSE: */
     /* 	errmsg = dupErrorMessage("Statement is in misuse."); */
     /* 	goto error; */
@@ -419,7 +413,6 @@ ScmObj readResult(ScmSqliteStmt * stmt)
 	/* V2 interface */
 	errmsg = getErrorMessage(stmt->db->ptr);
 	goto error;
-	/* SCM_ASSERT(0); */
     }
 
 error:

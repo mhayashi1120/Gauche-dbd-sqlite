@@ -43,7 +43,7 @@
        (dbi-open? *connection*))
 
 ;;;
-;;; DDL
+;;; Basic construction
 ;;;
 
 (dolist (q `("SELECT 1"
@@ -119,8 +119,6 @@ SELECT id, name FROM hoge" )
           (test-error)
           "SELECT ?"
           #u8(1 2 3))
-
-;; TODO last_insert_rowid
 
 ;;;
 ;;; Pass through
@@ -230,19 +228,24 @@ SELECT id, name FROM hoge" )
 (test-log "Generator (cursor) test")
 (use gauche.generator)
 
-(let* ([result (dbi-execute (dbi-prepare *connection* "SELECT id FROM hoge ORDER BY id"))]
+(let* ([query (dbi-prepare *connection* "SELECT id FROM hoge ORDER BY id")]
+       [result (dbi-execute query)]
        [gen (x->generator result)]
        )
   (test* "generator (like cursor) 1" #(1) (gen))
   (test* "generator (like cursor) 2" #(2) (gen))
   (test* "Map all results" '(#(1) #(2) #(3) #(4)) (map identity result))
-  (test* "Again Map all results" '(#(1) #(2) #(3) #(4)) (map identity result)))
+  (test* "Again Map all results" '(#(1) #(2) #(3) #(4)) (map identity result))
+  (dbi-close query)
+  (test* "query is closed" #f (dbi-open? query))
+  (dbi-close result)
+  (test* "Result is closed" #f (dbi-open? result)))
 
 
 ;; TODO test stmt closing
 ;; TODO float test
-;; TODO Prepared reuse (need reset?)
 ;; TODO edge case
+;; TODO last_insert_rowid
 
 ;;;
 ;;; SQL syntax error
@@ -265,6 +268,25 @@ SELECT id, name FROM hoge" )
 
 (test* "Connection is closed" #f
        (dbi-open? *connection*))
+
+
+;;;
+;;; Misc connection
+;;;
+
+;; memory sqlite
+(set! *connection* (dbi-connect #"dbi:sqlite::memory:"))
+
+(dbi-do *connection* "CREATE TABLE hoge (id, name);")
+(test* "Insert 1" 1
+       (dbi-do *connection* "INSERT INTO hoge VALUES(?, ?);" '() 1 "name1"))
+(test* "Insert 2, 3" 2
+       (dbi-do *connection* "INSERT INTO hoge VALUES(?, ?), (?, ?);" '() 2 "name2" 3 "name3"))
+(test* "Select inserted"
+       `(#(1 "name1") #(2 "name2") #(3 "name3"))
+       (map identity (dbi-do *connection* "SELECT * FROM hoge")))
+
+(dbi-close *connection*)
 
 ;; TODO connect option
 
