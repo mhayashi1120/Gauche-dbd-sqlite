@@ -44,8 +44,8 @@
 (define-enum-conditionally SQLITE_OPEN_PRIVATECACHE)
 (define-enum-conditionally SQLITE_OPEN_NOFOLLOW)
 
-(define-cproc open-db (path::<string> flags::<int> vfs)
-  (return (openDB path flags vfs)))
+(define-cproc open-db (path::<string> option-alist)
+  (return (openDB path option-alist)))
 
 (define-cproc db-close (db::<sqlite-db>) :: <void>
   (closeDB db))

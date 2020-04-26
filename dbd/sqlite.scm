@@ -71,7 +71,7 @@
      $ (cut string-tr <> "-" "_")
      $ keyword->string k))
 
-(define (sqlite-parse-flags s)
+(define (sqlite-parse-number s)
   (rxmatch-case s
     [#/^0x([0-9a-f]+)$/i (_ hex)
      (string->number hex 16)]
@@ -160,32 +160,39 @@
 (define-method dbi-make-connection ((d <sqlite-driver>) (options <string>)
                                     (options-alist <list>)
                                     . args)
+
+  (define (make-options)
+    (list
+     (cons "flags" (or (and-let1 opt (assoc-ref options-alist "flags")
+                         (sqlite-parse-number opt))
+                       (logior SQLITE_OPEN_READWRITE
+                               ;; TODO other option
+                               )))
+     (cons "vfs" (assoc-ref options-alist "vfs"))
+     (cons "timeout" (or (and-let1 opt (assoc-ref options-alist "timeout")
+                           (sqlite-parse-number opt))
+                         #f))))
+
   ;; TODO sqlite uri
-  ;; inmemory sqlite
-  ;; https://www.sqlite.org/c3ref/open.html
+  ;; TODO inmemory sqlite
+  ;; To read more details visit: https://www.sqlite.org/c3ref/open.html
   ;; Supported options are: 
   ;; file : Must be first option that has no value. 
   ;; "db" : same as file
-  ;; "flags" : TODO not exported SQLITE_OPEN_*
-  ;; "vfs" : TODO Name of VFS module
-  ;; "timeout" : TODO
-  ;; Supported keywords are:
-  ;; TODO
+  ;; "flags" : Flags integer pass to sqlite3_open_v2 .
+  ;; "vfs" : Name of VFS module.
+  ;; "timeout" : milliseconds of timeout when read/execute query.
+  ;; Supported keywords are none.
   (let-keywords args
       restargs
-    (let1 file                          ;TODO maybe url
+    (let1 file
         (match options-alist
           [((maybe-db . #t) . _)
            maybe-db]
           [else
            (assoc-ref options-alist "db" #f)])
-      (let* ([flags (or (and-let1 opt (assoc-ref options-alist "flags")
-                          (sqlite-parse-flags opt))
-                        (logior SQLITE_OPEN_READWRITE
-                                ;; TODO other option
-                                ))]
-             [vfs (assoc-ref options-alist "vfs")]
-             [db (open-db file flags vfs)])
+      (let* ([options (make-options)]
+             [db (open-db file options)])
         (make <sqlite-connection>
           :%db-handle db)))))
 

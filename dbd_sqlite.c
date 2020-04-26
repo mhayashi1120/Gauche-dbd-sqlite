@@ -126,13 +126,29 @@ ScmObj getLibSqliteVersion()
     return SCM_MAKE_STR_IMMUTABLE(sqlite3_libversion());
 }
 
-ScmObj openDB(ScmString * filenameArg, int flags, ScmObj vfsArg)
+static ScmObj assocRefOption(const char * key, ScmObj optionAlist)
+{
+    ScmObj pair = Scm_Assoc(SCM_MAKE_STR_IMMUTABLE(key), optionAlist, SCM_CMP_EQUAL);
+
+    if (!SCM_PAIRP(pair)) {
+	Scm_Error("Not found key");
+    }
+
+    return SCM_CDR(pair);
+}
+
+ScmObj openDB(ScmString * filenameArg, ScmObj optionAlist)
 {
     const char * filename = Scm_GetStringConst(filenameArg);
     sqlite3 * pDb = NULL;
     ScmString * errmsg = NULL;
-    const char * vfs = (SCM_STRINGP(vfsArg)) ? Scm_GetStringConst(SCM_STRING(vfsArg)) : NULL;
-
+    ScmObj flagsObj = assocRefOption("flags", optionAlist);
+    ScmObj vfsObj = assocRefOption("vfs", optionAlist);
+    ScmObj timeoutObj = assocRefOption("timeout", optionAlist);
+    const int flags = Scm_GetInteger(flagsObj);
+    const char * vfs = (SCM_FALSEP(vfsObj)) ? NULL : Scm_GetStringConst(SCM_STRING(vfsObj));
+    const int timeoutMS = (SCM_FALSEP(timeoutObj)) ? -1 : Scm_GetInteger(timeoutObj);
+    
     /* TODO option too many. let alist Scm_Assoc(SCM_CMP_EQUAL */
 
     int result = sqlite3_open_v2(
@@ -148,6 +164,10 @@ ScmObj openDB(ScmString * filenameArg, int flags, ScmObj vfsArg)
 	    errmsg = dupErrorMessage("dbd.sqlite: Unknown error while opening DB.");
 	}
 	goto error;
+    }
+
+    if (0 <= timeoutMS) {
+	sqlite3_busy_timeout(pDb, timeoutMS);
     }
 
     ScmSqliteDb * db = SCM_NEW(ScmSqliteDb);
