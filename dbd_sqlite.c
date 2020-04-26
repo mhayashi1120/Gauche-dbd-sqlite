@@ -143,8 +143,6 @@ ScmObj openDB(ScmString * filenameArg, ScmObj optionAlist)
     const char * vfs = (SCM_FALSEP(vfsObj)) ? NULL : Scm_GetStringConst(SCM_STRING(vfsObj));
     const int timeoutMS = (SCM_FALSEP(timeoutObj)) ? -1 : Scm_GetInteger(timeoutObj);
     
-    /* TODO option too many. let alist Scm_Assoc(SCM_CMP_EQUAL */
-
     int result = sqlite3_open_v2(
 	filename, &pDb,
 	flags,
@@ -343,28 +341,24 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 	    ScmSmallInt size;
 	    const char * text = Scm_GetStringContent(SCM_STRING(scmValue), &size, NULL, NULL);
 
-	    /* TODO fifth arg */
 	    sqlite3_bind_text(pStmt, i, text, size, NULL);
 	} else if (SCM_INTEGERP(scmValue)) {
-	    /* TODO range */
-	    /* negative value */
-	    /* TODO sqlite3_bind_int  when small? */
 	    sqlite3_int64 ll = Scm_GetInteger64(scmValue);
 	    sqlite3_bind_int64(pStmt, i, ll);
 	} else if (SCM_FLONUMP(scmValue)) {
-	    /* TODO other inexact value? */
 	    const double f = Scm_GetDouble(scmValue);
+
 	    sqlite3_bind_double(pStmt, i, f);
 	} else if (SCM_UVECTORP(scmValue) && SCM_UVECTOR_SUBTYPE_P(scmValue, SCM_UVECTOR_U8)) {
 	    const int size = SCM_UVECTOR_SIZE(scmValue);
 	    const unsigned char * blob = SCM_UVECTOR_ELEMENTS(scmValue);
-	    /* TODO fifth arg */
+
 	    sqlite3_bind_blob(pStmt, i, blob, size, NULL);
 	} else if (SCM_FALSEP(scmValue)) {
 	    sqlite3_bind_null(pStmt, i);
 	} else {
-	    /* TODO show the value. */
-	    Scm_Error("Not a supported type ");
+	    /* TODO how to show the scmValue in error format. */
+	    Scm_Error("Not a supported type.");
 	}
 
 	params = SCM_CDR(params);
@@ -439,9 +433,6 @@ void closeStmt(ScmSqliteStmt * stmt)
 
     Scm_UnregisterFinalizer(SCM_OBJ(stmt));
 }
-
-/* TODO timeout */
-
 
 /*
  * Module initialization function.
