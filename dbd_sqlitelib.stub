@@ -59,9 +59,7 @@
 (define-cproc list-parameters (stmt::<sqlite-stmt>)
   (return (listParameters stmt)))
 
-;; TODO should return applied row count
-;;   -> no! read-next return if not pair?
-;; return value (<boolean>  TODO
+;; return number | SELECT first result.
 (define-cproc execute-stmt (stmt::<sqlite-stmt> params::<list>)
   (resetStmt stmt)
   (bindParameters stmt params)
@@ -71,8 +69,8 @@
   ;; Return pair
   (return (-> stmt columns)))
 
+;; read SELECT result set.
 (define-cproc stmt-read-next (stmt::<sqlite-stmt>)
-  ;; TODO Return (readable? , vector | EOF)
   (return (readResult stmt)))
 
 (define-cproc close-stmt (stmt::<sqlite-stmt>) :: <void>

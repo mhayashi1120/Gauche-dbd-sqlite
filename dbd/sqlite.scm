@@ -16,7 +16,6 @@
 
    relation-column-names relation-accessor
    relation-modifier relation-rows
-
    )
   )
 (select-module dbd.sqlite)
@@ -114,15 +113,9 @@
 (define-method relation-modifier ((r <sqlite-result>))
   #f)
 
+;; <sqlite-result> -> <list>
 (define-method relation-rows ((r <sqlite-result>))
-  (let loop ([res '()]
-             [item (~ r'seed)])
-    (cond
-     [(eof-object? item)
-      (reverse! res)]
-     [else
-      (loop (cons item res)
-            (stmt-read-next (get-handle r)))])))
+  (map identity r))
 
 ;;;
 ;;; <sequence> API
@@ -299,7 +292,6 @@
   (and-let1 q (~ r 'source-query)
     (dbi-open? q)))
 
-;; TODO db close all of statement should close?
 (define-method dbi-close ((c <sqlite-connection>))
   (and-let1 h (get-handle c)
     (db-close h)

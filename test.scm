@@ -77,7 +77,7 @@
 (define (query->result q . params)
   (match (apply dbi-execute q params)
     [(? (^x (is-a? x <relation>)) r)
-     (map identity r)]
+     (relation-rows r)]
     [x
      x]))
 
@@ -109,6 +109,10 @@ SELECT id, name FROM hoge" )
 (test-sql "Multiple statements and get last statement result. 2"
           `(#(1 2))
           "SELECT 1; SELECT 1, 2;" )
+
+(test-sql "Empty result set"
+          `()
+          "SELECT * FROM hoge WHERE id = 100" )
 
 (test-sql "text.sql parser prepared"
           `(#(1 2 "three" 4.0 #f))
@@ -234,12 +238,14 @@ SELECT id, name FROM hoge" )
        )
   (test* "generator (like cursor) 1" #(1) (gen))
   (test* "generator (like cursor) 2" #(2) (gen))
-  (test* "Map all results" '(#(1) #(2) #(3) #(4)) (map identity result))
-  (test* "Again Map all results" '(#(1) #(2) #(3) #(4)) (map identity result))
+  (test* "Map all results" '(#(1) #(2) #(3) #(4)) (relation-rows result))
+  (test* "Again Map all results" '(#(1) #(2) #(3) #(4)) (relation-rows result))
   (dbi-close query)
   (test* "query is closed" #f (dbi-open? query))
   (dbi-close result)
   (test* "Result is closed" #f (dbi-open? result)))
+
+
 
 
 ;; TODO test stmt closing
