@@ -46,6 +46,8 @@
 ;;; Basic construction
 ;;;
 
+(test-log "Basic construction.")
+
 (dolist (q `("SELECT 1"
              "SELECT 1;"
              "SELECT 1; SELECT 2"
@@ -80,6 +82,8 @@
     [x
      x]))
 
+(test-log "Basic prepared query (text.sql)")
+
 (define (sql->result sql . params)
   (let* ([q (dbi-prepare *connection* sql)])
     (apply query->result q params)))
@@ -87,14 +91,6 @@
 (define (test-sql name expected sql . params)
   (test* name expected
          (apply sql->result sql params)))
-
-(define (sql->result* sql . params)
-  (let* ([q (dbi-prepare *connection* sql :pass-through #t)])
-    (apply query->result q params)))
-
-(define (test-sql* name expected sql . params)
-  (test* name expected
-         (apply sql->result* sql params)))
 
 ;; Multiple statement
 (test-sql "Multiple statement and get last statement result."
@@ -126,6 +122,16 @@ SELECT id, name FROM hoge" )
 ;;;
 ;;; Pass through
 ;;;
+
+(test-log "pass-through query.")
+
+(define (sql->result* sql . params)
+  (let* ([q (dbi-prepare *connection* sql :pass-through #t)])
+    (apply query->result q params)))
+
+(define (test-sql* name expected sql . params)
+  (test* name expected
+         (apply sql->result* sql params)))
 
 ;; Get by ":" prefix param
 (test-sql* "Select by \":\" parameter" `(#("n1")) "SELECT name FROM hoge WHERE id = :id" :id 1)
@@ -167,29 +173,36 @@ SELECT id, name FROM hoge" )
       [select (dbi-prepare *connection* "SELECT value FROM hoge WHERE id = :id " :pass-through #t)])
   (dolist (testcase `(("Positive max integer" #x7fffffffffffffff)
                       ("Negative max integer" #x-8000000000000000)
+                      ("Float value" 4.0000000000000000001 :expected 4)
+                      ("Float value" 4.1)
                       ("Zero" 0)
-                      ("Overflow long long (64bit integer)" #x8000000000000000 ,(test-error))
-                      ("Overflow long long (64bit integer)" #x-8000000000000001 ,(test-error))
+                      (:error "Overflow long long (64bit integer)" #x8000000000000000)
+                      (:error "Overflow long long (64bit integer)" #x-8000000000000001)
                       ("Large text" ,(make-string #xff #\a))
+                      (:error "Unsupported type u16vec" #u16(1 256))
+                      (:error "Unsupported type boolean" #t)
                       ))
     (match testcase
-      [(name value)
-       (test* #"~|name| UPDATE"
-              1
-              (query->result
-               update 
-               :value value
-               :id 1))
+      [((? string? name) value . keywords)
+       (let-keywords keywords
+           ([expected value]
+            . _rest)
+         (test* #"~|name| UPDATE"
+                1
+                (query->result
+                 update 
+                 :value value
+                 :id 1))
 
-       (test* #"~|name| SELECT"
-              `(#(,value))
-              (query->result
-               select
-               :id 1))]
+         (test* #"~|name| SELECT"
+                `(#(,expected))
+                (query->result
+                 select
+                 :id 1)))]
 
-      [(name value expected)
+      [(:error name value)
        (test* name
-              expected
+              (test-error)
               (query->result
                update
                :value value
@@ -244,10 +257,7 @@ SELECT id, name FROM hoge" )
   (dbi-close result)
   (test* "Result is closed" #f (dbi-open? result)))
 
-;; TODO float test
 ;; TODO last_insert_rowid
-;; TODO <relation> test
-;; TODO <sequence> test
 
 ;;;
 ;;; SQL syntax error

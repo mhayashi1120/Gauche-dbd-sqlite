@@ -11,11 +11,6 @@
   (export
    <sqlite-connection> <sqlite-driver> <sqlite-query> <sqlite-result>
    sqlite-libversion-number sqlite-libversion
-
-   call-with-iterator
-
-   relation-column-names relation-accessor
-   relation-modifier relation-rows
    )
   )
 (select-module dbd.sqlite)
@@ -193,18 +188,19 @@
 
   ;; To read more details visit: https://www.sqlite.org/c3ref/open.html
   ;; e.g. (dbi-connect "dbi:sqlite:/path/to/sqlite.db;memory;sharedcache;")
+  ;;  Integer accept hex ("0x"), octal ("0"), decimal notation. (e.g. "0x12", "022", "18")
   ;; Supported options are: 
   ;; file : Must be first option that has no value. 
   ;; "db" : same as file
   ;; "flags" : Flags integer. Pass to sqlite3_open_v2 as is.
-  ;;     this override all of following flags. Accept hex ("0x"), octal ("0"), decimal
+  ;;     this override all of following flags.
   ;; "required-flags" : Integer flags. This flags override other required flags.
   ;; "readonly" : Boolean no value option. Open database as read-only.
   ;; "optional-flags" : Integer flags. This flags override other optional flags.
   ;; "memory" : Boolean no value option. Open database in memory.
   ;; "sharedcache" : Enable shared cache.
   ;; "fullmutex" : Enable serialized threading mode.
-  ;; "uri" : file is interpreted as a URI.
+  ;; "uri" : file is interpreted as a URI. This might be default in future release.
   ;; "vfs" : Name of VFS module.
   ;; "timeout" : milliseconds of timeout when read/execute query.
   ;; Supported keywords are none.

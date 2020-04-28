@@ -317,8 +317,8 @@ void resetStmt(ScmSqliteStmt * stmt)
     /* this call does not reset binding parameter. */
     sqlite3_reset(stmt->ptr);
 
-
-    /* TODO check result? */
+    /* Most recent sqlite3_step has an error, sqlite3_reset return error code. */
+    /* But no need to check the result since return to initial state. */
 }
 
 void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
@@ -357,8 +357,7 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 	} else if (SCM_FALSEP(scmValue)) {
 	    sqlite3_bind_null(pStmt, i);
 	} else {
-	    /* TODO how to show the scmValue in error format. */
-	    Scm_Error("Not a supported type.");
+	    Scm_Error("Not a supported type %S.", scmValue);
 	}
 
 	params = SCM_CDR(params);
@@ -390,6 +389,7 @@ ScmObj readResult(ScmSqliteStmt * stmt)
 	}
     case SQLITE_ROW:
 	return readRow(stmt->ptr);
+	/* TODO busy test */
     /* case SQLITE_BUSY: */
     /* 	errmsg = dupErrorMessage("Database is busy."); */
     /* 	goto error; */
@@ -402,8 +402,8 @@ ScmObj readResult(ScmSqliteStmt * stmt)
 	goto error;
     }
 
+    /* TODO test the error */
 error:
-    /* TODO test when error */
     sqlite3_finalize(stmt->ptr);
 
     if (errmsg == NULL)
