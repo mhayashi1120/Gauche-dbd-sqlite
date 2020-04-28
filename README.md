@@ -16,20 +16,11 @@ Samples
 
 ```
 
-Not portable code
 ```
 (match row
   (#(id name)
    ...)
    )
-```
-
-
-```
-(let ((id (dbi-get-value "id"))
-      (name (dbi-get-value "name")))
-	...)
-
 ```
 
 
@@ -51,3 +42,7 @@ https://github.com/mhayashi1120/Gauche-dbd-sqlite3/issues/1
 git init 初期の頃からできるだけ小まめに commit しながら、自身 (mhayashi1120@gmail.com) がゼロから作った証跡として残しときます。
 
 長時間動くプログラムだとメモリリークしていた様子がある。
+
+前の Gauche-dbd-sqlite3 との違い。
+
+Gauche-dbd-sqlite3 のソースは読まない縛り。

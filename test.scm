@@ -71,7 +71,6 @@
          (dbi-execute q))
        (^ [_ x] x #t))
 
-(use gauche.collection)
 (use util.match)
 
 (define (query->result q . params)
@@ -245,12 +244,7 @@ SELECT id, name FROM hoge" )
   (dbi-close result)
   (test* "Result is closed" #f (dbi-open? result)))
 
-
-
-
-;; TODO test stmt closing
 ;; TODO float test
-;; TODO edge case
 ;; TODO last_insert_rowid
 ;; TODO <relation> test
 ;; TODO <sequence> test
@@ -282,7 +276,10 @@ SELECT id, name FROM hoge" )
 ;;; Misc connection
 ;;;
 
+;;
 ;; memory sqlite
+;;
+(test-log "In memory SQLite")
 (set! *connection* (dbi-connect #"dbi:sqlite::memory:"))
 
 (dbi-do *connection* "CREATE TABLE hoge (id, name);")
@@ -292,11 +289,62 @@ SELECT id, name FROM hoge" )
        (dbi-do *connection* "INSERT INTO hoge VALUES(?, ?), (?, ?);" '() 2 "name2" 3 "name3"))
 (test* "Select inserted"
        `(#(1 "name1") #(2 "name2") #(3 "name3"))
-       (map identity (dbi-do *connection* "SELECT * FROM hoge")))
+       (relation-rows (dbi-do *connection* "SELECT * FROM hoge")))
 
 (dbi-close *connection*)
 
-;; TODO connect option
+;;
+;; Connection is terminated
+;;
+
+(test-log "close connection before commit.")
+(set! *connection* (dbi-connect #"dbi:sqlite:~|*temp-sqlite*|;"))
+
+(dbi-do *connection* "BEGIN")
+(dbi-do *connection* "INSERT INTO hoge (id, name, created) VALUES (:id, :name, :created)"
+        `(:pass-through #t)
+        :id 100
+        :name "name100"
+        :created "2020-04-27 23:34:45")
+
+(test* "Check insert result in transaction"
+       `(#("name100"))
+       (relation-rows (dbi-do *connection* "SELECT name FROM hoge WHERE id = 100")))
+
+(dbi-close *connection*)
+
+(set! *connection* (dbi-connect #"dbi:sqlite:~|*temp-sqlite*|;"))
+
+(test* "Check insert result in transaction is not exists"
+       `()
+       (relation-rows (dbi-do *connection* "SELECT name FROM hoge WHERE id = 100")))
+
+(dbi-close *connection*)
+
+;;
+;; Fullmutex
+;;
+
+(test-log "fullmutex connection")
+
+(use gauche.process)
+
+(set! *connection* (dbi-connect #"dbi:sqlite:~|*temp-sqlite*|;fullmutex;"))
+
+
+(use gauche.threads)
+
+;;TODO threading tests
+;; 1. multiple process is serialized.
+;; 2. multiple thread is serialized.
+
+
+(dbi-close *connection*)
+
+;; TODO uri filename
+
+;; TODO other connect option
+;; TODO check timeout
 
 
 ;; If you don't want `gosh' to exit with nonzero status even if

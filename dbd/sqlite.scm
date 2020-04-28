@@ -73,7 +73,7 @@
      (string->number hex 16)]
     [#/^0[0-7]+$/ (_ oct)
      (string->number oct 8)]
-    [#/^([0-9]+)$/ (_ decimal)
+    [#/^([1-9]?[0-9]*)$/ (_ decimal)
      (string->number decimal 10)]
     [else
      (errorf "Not a supported flags ~a" s)]) )
@@ -161,22 +161,50 @@
     (list
      (cons "flags" (or (and-let1 opt (assoc-ref options-alist "flags")
                          (sqlite-parse-number opt))
-                       (logior SQLITE_OPEN_READWRITE
-                               SQLITE_OPEN_CREATE)))
+                       (logior
+                        ;; Required flags
+                        (or
+                         (and-let1 opt (assoc-ref options-alist "required-flags")
+                           (sqlite-parse-number opt))
+                         (and-let1 opt (assoc-ref options-alist "readonly")
+                           SQLITE_OPEN_READONLY)
+                         ;; default allow all (read / write / create)
+                         (logior SQLITE_OPEN_READWRITE
+                                 SQLITE_OPEN_CREATE))
+                        ;; Optional flags
+                        (or
+                         (and-let1 opt (assoc-ref options-alist "optional-flags")
+                           (sqlite-parse-number opt))
+                         (logior
+                          (if-let1 opt (assoc-ref options-alist "memory")
+                            SQLITE_OPEN_MEMORY 0)
+                          (if-let1 opt (assoc-ref options-alist "sharedcache")
+                            SQLITE_OPEN_SHAREDCACHE 0)
+                          (if-let1 opt (assoc-ref options-alist "uri")
+                            SQLITE_OPEN_URI 0)
+                          (if-let1 opt (assoc-ref options-alist "fullmutex")
+                            SQLITE_OPEN_FULLMUTEX 0)
+                          ))
+                        )))
      (cons "vfs" (assoc-ref options-alist "vfs"))
      (cons "timeout" (or (and-let1 opt (assoc-ref options-alist "timeout")
                            (sqlite-parse-number opt))
                          #f))))
 
   ;; To read more details visit: https://www.sqlite.org/c3ref/open.html
-  ;; TODO e.g. /path/to/sqlite.db;memory;uri;
+  ;; e.g. (dbi-connect "dbi:sqlite:/path/to/sqlite.db;memory;sharedcache;")
   ;; Supported options are: 
   ;; file : Must be first option that has no value. 
   ;; "db" : same as file
-  ;; "flags" : Flags integer pass to sqlite3_open_v2 . (e.g. TODO)
-  ;; "memory" : TODO
-  ;; "uri" : TODO
-  ;; "readonly" : TODO
+  ;; "flags" : Flags integer. Pass to sqlite3_open_v2 as is.
+  ;;     this override all of following flags. Accept hex ("0x"), octal ("0"), decimal
+  ;; "required-flags" : Integer flags. This flags override other required flags.
+  ;; "readonly" : Boolean no value option. Open database as read-only.
+  ;; "optional-flags" : Integer flags. This flags override other optional flags.
+  ;; "memory" : Boolean no value option. Open database in memory.
+  ;; "sharedcache" : Enable shared cache.
+  ;; "fullmutex" : Enable serialized threading mode.
+  ;; "uri" : file is interpreted as a URI.
   ;; "vfs" : Name of VFS module.
   ;; "timeout" : milliseconds of timeout when read/execute query.
   ;; Supported keywords are none.
@@ -306,9 +334,3 @@
   (and-let1 q (~ r 'source-query)
     (dbi-close q)
     (slot-set! r 'source-query #f)))
-
-;; Probablly no need
-;; (define-method dbi-do ((c <sqlite-connection>) (sql <string>) :optional options)
-;;   )
-
-
