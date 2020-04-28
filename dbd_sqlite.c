@@ -6,7 +6,6 @@
 
 #include <sqlite3.h>
 
-
 static ScmObj readRow(sqlite3_stmt * pStmt)
 {
     int col = sqlite3_column_count(pStmt);
@@ -107,7 +106,9 @@ static ScmString * getErrorMessage(sqlite3 * pDb)
 
 static void raiseError(ScmString * msg)
 {
-    Scm_Error(Scm_GetStringConst(msg));
+    Scm_RaiseCondition(SCM_SYMBOL_VALUE("dbd.sqlite", "<sqlite-error>"),
+		       SCM_RAISE_CONDITION_MESSAGE,
+		       Scm_GetStringConst(msg));
 }
 
 ScmObj getLibSqliteVersionNumber()
@@ -357,7 +358,7 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 	} else if (SCM_FALSEP(scmValue)) {
 	    sqlite3_bind_null(pStmt, i);
 	} else {
-	    Scm_Error("Not a supported type %S.", scmValue);
+	    raiseError(SCM_STRING(Scm_Sprintf("Not a supported type %S.", scmValue)));
 	}
 
 	params = SCM_CDR(params);

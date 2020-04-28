@@ -22,10 +22,6 @@ SCM_CLASS_DECL(Scm_SqliteDbClass);
 #define SCM_CLASS_SQLITE_DB (&Scm_SqliteDbClass)
 #define SCM_SQLITE_DB(obj) ((ScmSqliteDb*)(obj))
 #define SCM_SQLITE_DB_P(obj) (SCM_XTYPEP(obj, SCM_CLASS_SQLITE_DB))
-// #define SCM_SQLITE_DB_UNBOX(obj) SCM_FOREIGN_POINTER_REF(ScmSqliteDb*, obj)
-// #define SCM_SQLITE_DB_BOX(res) \
-//     Scm_MakeForeignPointer(Scm_SqliteDbClass, res)
-
 
 typedef struct ScmSqliteStmtRec {
 	SCM_HEADER;
@@ -41,9 +37,6 @@ SCM_CLASS_DECL(Scm_SqliteStmtClass);
 #define SCM_CLASS_SQLITE_STMT (&Scm_SqliteStmtClass)
 #define SCM_SQLITE_STMT(obj) ((ScmSqliteStmt*)(obj))
 #define SCM_SQLITE_STMT_P(obj) (SCM_XTYPEP(obj, SCM_CLASS_SQLITE_STMT))
-// #define SCM_SQLITE_STMT_UNBOX(obj) SCM_FOREIGN_POINTER_REF(ScmSqliteStmt*, obj)
-// #define SCM_SQLITE_STMT_BOX(res) \
-//     Scm_MakeForeignPointer(Scm_SqliteStmtClass, res)
 
 extern ScmObj getLibSqliteVersion();
 
