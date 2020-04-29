@@ -106,7 +106,11 @@ static ScmString * getErrorMessage(sqlite3 * pDb)
 
 static void raiseError(ScmString * msg)
 {
-    Scm_RaiseCondition(SCM_SYMBOL_VALUE("dbd.sqlite", "<sqlite-error>"),
+    ScmModule * mod = SCM_FIND_MODULE("dbd.sqlite", FALSE);
+    ScmSymbol * errsym = SCM_SYMBOL(SCM_INTERN("<sqlite-error>"));
+    ScmObj condition = Scm_GlobalVariableRef(mod, errsym, FALSE);
+
+    Scm_RaiseCondition(condition,
 		       SCM_RAISE_CONDITION_MESSAGE,
 		       Scm_GetStringConst(msg));
 }

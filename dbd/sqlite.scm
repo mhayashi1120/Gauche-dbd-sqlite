@@ -124,7 +124,7 @@
     (stmt-read-next (get-handle r)))
   
   (unless (dbi-open? r)
-    (error <dbi-error> "<sqlite-result> already closed:" r))
+    (error <sqlite-error> "<sqlite-result> already closed:" r))
 
   ;; Forcibly read from first.
   ;; Do not use seed.
