@@ -221,7 +221,7 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
     ScmSmallInt size;
     const char * zSql = Scm_GetStringContent(sql, &size, NULL, NULL);
     unsigned int prepFlags = 0;
-    sqlite3_stmt * pStmt;
+    sqlite3_stmt * pStmt = NULL;
     const char * zTail = zSql;
     ScmString * errmsg = NULL;
 
