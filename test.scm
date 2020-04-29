@@ -168,7 +168,7 @@ SELECT id, name FROM hoge" )
   ;;        (query->result q :a 1 :b 3))
   )
 
-(test-log "Range log for pass-through query")
+(test-log "pass-through query")
 (let ([update (dbi-prepare *connection* "UPDATE hoge SET value = :value WHERE id = :id " :pass-through #t)]
       [select (dbi-prepare *connection* "SELECT value FROM hoge WHERE id = :id " :pass-through #t)])
   (dolist (testcase `(("Positive max integer" #x7fffffffffffffff)
