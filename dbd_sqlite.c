@@ -283,8 +283,7 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
 
 error:
 
-    if (errmsg == NULL)
-	return SCM_FALSE;
+    SCM_ASSERT(errmsg != NULL);
 
     raiseError(errmsg);
 }
@@ -411,9 +410,7 @@ ScmObj readResult(ScmSqliteStmt * stmt)
 error:
     sqlite3_finalize(stmt->ptr);
 
-    if (errmsg == NULL)
-	/* TODO reconsider */
-	return SCM_FALSE;
+    SCM_ASSERT(errmsg != NULL);
 
     raiseError(errmsg);
 }
