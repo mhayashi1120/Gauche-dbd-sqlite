@@ -9,7 +9,10 @@
   (use gauche.sequence)
   (use util.relation)
   (export
+   <sqlite-error>
+
    <sqlite-connection> <sqlite-driver> <sqlite-query> <sqlite-result>
+
    sqlite-libversion-number sqlite-libversion
    )
   )
@@ -217,6 +220,7 @@
         (make <sqlite-connection>
           :%db-handle db)))))
 
+;; TODO SQLITE_PREPARE_* flags
 ;; NOTE: dbd.sqlite module simply ignore preceeding sql statement result.
 ;; SELECT 1; SELECT 1, 2;  -> (#(1 2))
 ;; SELECT 1, 2; UPDATE foo SET (col1 = "col1"); -> integer (dbd.sqlite specific)
@@ -282,7 +286,7 @@
           [else
            (or (assoc-ref val-alist name #f)
                (and (~ q 'strict-bind?)
-                    (errorf "Parameter ~s not found" name)))]))
+                    (errorf <dbi-parameter-error> "Parameter ~s not found" name)))]))
        sql-params)))
 
   (define (ensure-prepare&params)

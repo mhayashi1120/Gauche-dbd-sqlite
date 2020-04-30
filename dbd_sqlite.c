@@ -84,8 +84,6 @@ static void finalizeDBMaybe(ScmObj z, void *data)
 
 static void finalizeStmtMaybe(ScmObj z, void *data)
 {
-    /* TODO when close by close_v2 , ptr may point to invalid location? */
-
     ScmSqliteStmt * stmt = SCM_SQLITE_STMT(z);
 
     closeStmt(stmt);
@@ -101,7 +99,12 @@ static ScmString * dupErrorMessage(const char * errmsg)
 
 static ScmString * getErrorMessage(sqlite3 * pDb)
 {
-    return dupErrorMessage(sqlite3_errmsg(pDb));
+    const char * msg = sqlite3_errmsg(pDb);
+
+    if (msg == NULL)
+	return NULL;
+
+    return dupErrorMessage(msg);
 }
 
 static void raiseError(ScmString * msg)
@@ -111,8 +114,8 @@ static void raiseError(ScmString * msg)
     ScmObj condition = Scm_GlobalVariableRef(mod, errsym, FALSE);
 
     Scm_RaiseCondition(condition,
-		       SCM_RAISE_CONDITION_MESSAGE,
-		       Scm_GetStringConst(msg));
+    		       SCM_RAISE_CONDITION_MESSAGE,
+    		       Scm_GetStringConst(msg));
 }
 
 ScmObj getLibSqliteVersionNumber()
@@ -130,7 +133,7 @@ static ScmObj assocRefOption(const char * key, ScmObj optionAlist)
     ScmObj pair = Scm_Assoc(SCM_MAKE_STR_IMMUTABLE(key), optionAlist, SCM_CMP_EQUAL);
 
     if (!SCM_PAIRP(pair)) {
-	Scm_Error("Not found key");
+	Scm_Error("Not found key.");
     }
 
     return SCM_CDR(pair);
@@ -158,7 +161,7 @@ ScmObj openDB(ScmString * filenameArg, ScmObj optionAlist)
 	if (pDb != NULL) {
 	    errmsg = getErrorMessage(pDb);
 	} else {
-	    errmsg = dupErrorMessage("dbd.sqlite: Unknown error while opening DB.");
+	    errmsg = dupErrorMessage("Unknown error while opening DB.");
 	}
 	goto error;
     }
@@ -179,8 +182,8 @@ ScmObj openDB(ScmString * filenameArg, ScmObj optionAlist)
 error:
 
     if (pDb != NULL) {
-	/* TODO or sqlite3_close no need release other resource here */
-	sqlite3_close_v2(pDb);
+	/* Not using v2 interface. no need release other resource here */
+	sqlite3_close(pDb);
     }
 
     if (errmsg == NULL)
@@ -200,7 +203,7 @@ void closeDB(ScmSqliteDb * db)
     int result = sqlite3_close_v2(db->ptr);
 
     if (result != SQLITE_OK) {
-	errmsg = dupErrorMessage("Unable close db");
+	errmsg = getErrorMessage(db->ptr);
 	goto error;
     }
 
@@ -218,20 +221,20 @@ error:
 
 ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
 {
-    ScmSmallInt size;
-    const char * zSql = Scm_GetStringContent(sql, &size, NULL, NULL);
+    const char * zSql = Scm_GetStringConst(sql);
     unsigned int prepFlags = 0;
     sqlite3_stmt * pStmt = NULL;
     const char * zTail = zSql;
     ScmString * errmsg = NULL;
 
-    /* TODO must check not closed caller */
-    /* should not assert. just return? */
-    SCM_ASSERT(db->ptr != NULL);
+    if (db->ptr == NULL) {
+	errmsg = dupErrorMessage("Database has been closed.");
+	goto error;
+    }
 
     while (1) {
 	int result = sqlite3_prepare_v3(
-	    db->ptr, zSql, size,
+	    db->ptr, zSql, -1,
 	    /* Zero or more SQLITE_PREPARE_ flags */
 	    prepFlags,
 	    &pStmt, &zTail
@@ -243,7 +246,7 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
 	}
 
 	if (pStmt == NULL) {
-	    errmsg = dupErrorMessage("Unknown error statement is not created.");
+	    errmsg = dupErrorMessage("Unknown error: statement is not prepared.");
 	    goto error;
 	}
 
@@ -294,7 +297,12 @@ error:
 /* NOTE: edge case, Programmer can choose "SELECT ?999" as a parameter. */
 ScmObj listParameters(ScmSqliteStmt * stmt)
 {
-    SCM_ASSERT(stmt->ptr != NULL);
+    ScmString * errmsg = NULL;
+
+    if (stmt->ptr == NULL) {
+	errmsg = dupErrorMessage("Statement has been closed.");
+	goto error;
+    }
 
     sqlite3_stmt * pStmt = stmt->ptr;
     int count = sqlite3_bind_parameter_count(pStmt);
@@ -312,6 +320,12 @@ ScmObj listParameters(ScmSqliteStmt * stmt)
     }
 
     return result;
+
+error:
+
+    SCM_ASSERT(errmsg != NULL);
+
+    raiseError(errmsg);
 }
 
 void resetStmt(ScmSqliteStmt * stmt)
@@ -366,7 +380,6 @@ void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
 
 	params = SCM_CDR(params);
     }
-    
 }
 
 ScmObj readLastChanges(ScmSqliteStmt * stmt)
@@ -401,14 +414,12 @@ ScmObj readResult(ScmSqliteStmt * stmt)
     /* 	errmsg = dupErrorMessage("Statement is in misuse."); */
     /* 	goto error; */
     default:
-	/* V2 interface */
+	/* sqlite3_prepare_vX interface retrun many code. Handle sqlite3_errmsg */
 	errmsg = getErrorMessage(stmt->db->ptr);
 	goto error;
     }
 
-    /* TODO test the error */
 error:
-    sqlite3_finalize(stmt->ptr);
 
     SCM_ASSERT(errmsg != NULL);
 
@@ -417,7 +428,7 @@ error:
 
 void closeStmt(ScmSqliteStmt * stmt)
 {
-    if (stmt->ptr == NULL) {
+    if (stmt->db->ptr == NULL || stmt->ptr == NULL) {
 	return;
     }
 

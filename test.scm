@@ -34,6 +34,10 @@
 (define *connection* #f)
 (set! *connection* (dbi-connect #"dbi:sqlite:~|*temp-sqlite*|"))
 
+(define *insert-rowids* '())
+(define (append-rowids! . ids)
+  (set! *insert-rowids* (append *insert-rowids* ids)))
+
 (use dbd.sqlite)
 
 (test* "Sqlite Connection" <sqlite-connection>
@@ -41,6 +45,7 @@
 
 (test* "Sqlite connection is open" #t
        (dbi-open? *connection*))
+
 
 ;;;
 ;;; Basic construction
@@ -75,6 +80,7 @@
 
 (use util.match)
 
+;; To simple test easily, make <relation> to <list>
 (define (query->result q . params)
   (match (apply dbi-execute q params)
     [(? (^x (is-a? x <relation>)) r)
@@ -98,16 +104,17 @@
           "INSERT INTO hoge(id, name, created) VALUES (1, 'n1', '2020-01-01 00:01:02');
 INSERT INTO hoge(id, name, created) VALUES (2, 'n2', '2020-02-03 01:02:03');
 INSERT INTO hoge(id, name, created) VALUES (3, 'n3', '2020-03-04 02:03:04');
-SELECT id, name FROM hoge" )
+SELECT id, name FROM hoge")
+(append-rowids! 1 2 3)
 
 ;; Ignore first statement result
 (test-sql "Multiple statements and get last statement result. 2"
           `(#(1 2))
-          "SELECT 1; SELECT 1, 2;" )
+          "SELECT 1; SELECT 1, 2;")
 
 (test-sql "Empty result set"
           `()
-          "SELECT * FROM hoge WHERE id = 100" )
+          "SELECT * FROM hoge WHERE id = 100")
 
 (test-sql "text.sql parser prepared"
           `(#(1 2 "three" 4.0 #f))
@@ -115,9 +122,20 @@ SELECT id, name FROM hoge" )
           1 2 "three" 4.0 #f)
 
 (test-sql "Not like pass-through query u8vector not supported."
-          (test-error)
+          (test-error <dbi-parameter-error>)
           "SELECT ?"
           #u8(1 2 3))
+
+(test-sql "Insert and get last_insert_rowid"
+          `(#(4))
+          "INSERT INTO hoge(name, created) VALUES (?, ?); SELECT last_insert_rowid();"
+          "name4" "2020-04-30")
+(append-rowids! 4)
+
+(test-sql "Constraints error"
+          (test-error <sqlite-error> #/constraint/i)
+          "INSERT INTO hoge(id, name, created) VALUES (?, ?, ?);"
+          4 "name4.5" "2020-04-30")
 
 ;;;
 ;;; Pass through
@@ -160,7 +178,7 @@ SELECT id, name FROM hoge" )
 
 (let* ([q (dbi-prepare *connection* "SELECT :a" :pass-through #t :strict-bind? #t)])
   
-  (test* "Strict bind (No parameter supplied.)" (test-error)
+  (test* "Strict bind (No parameter supplied.)" (test-error <dbi-parameter-error>)
          (query->result q))
 
   ;; TODO reconsider
@@ -213,33 +231,36 @@ SELECT id, name FROM hoge" )
 (test-sql* "Insert in transaction"
            1
            "INSERT INTO hoge (id, name, value, created) VALUES (:id, :name, :value, :created)"
-           :id 4
+           :id 104
            :name "name4"
            :value 10
            :created "2020-04-01")
+
 (test-sql* "Select in transaction found."
-           `(#(4))
+           `(#(104))
            "SELECT id FROM hoge WHERE id = :id"
-           :id 4)
+           :id 104)
 (sql->result "ROLLBACK;")
 (test-sql* "Select after rollback is not found"
            `()
            "SELECT id FROM hoge WHERE id = :id"
-           :id 4)
+           :id 104)
 
 (sql->result "BEGIN;")
 (test-sql* "Insert in transaction"
            1
            "INSERT INTO hoge (id, name, value, created) VALUES (:id, :name, :value, :created)"
-           :id 4
+           :id 104
            :name "name4"
            :value 10
            :created "2020-04-01")
 (sql->result "COMMIT;")
+(append-rowids! 104)
+
 (test-sql* "Select in transaction found."
-           `(#(4))
+           `(#(104))
            "SELECT id FROM hoge WHERE id = :id"
-           :id 4)
+           :id 104)
 
 (test-log "Generator (cursor) test")
 (use gauche.generator)
@@ -250,21 +271,19 @@ SELECT id, name FROM hoge" )
        )
   (test* "generator (like cursor) 1" #(1) (gen))
   (test* "generator (like cursor) 2" #(2) (gen))
-  (test* "Map all results" '(#(1) #(2) #(3) #(4)) (relation-rows result))
-  (test* "Again Map all results" '(#(1) #(2) #(3) #(4)) (relation-rows result))
+  (test* "Map all results" (map (cut vector <>) *insert-rowids*) (relation-rows result))
+  (test* "Again Map all results" (map (cut vector <>) *insert-rowids*) (relation-rows result))
   (dbi-close query)
   (test* "query is closed" #f (dbi-open? query))
   (dbi-close result)
   (test* "Result is closed" #f (dbi-open? result)))
-
-;; TODO last_insert_rowid
 
 ;;;
 ;;; SQL syntax error
 ;;;
 
 (define (error-test name query)
-  (test* name (test-error)
+  (test* name (test-error <sqlite-error>)
         (sql->result query)))
 
 (error-test "No existing object" "SELECT 1 FROM hoge1")
@@ -280,7 +299,6 @@ SELECT id, name FROM hoge" )
 
 (test* "Connection is closed" #f
        (dbi-open? *connection*))
-
 
 ;;;
 ;;; Misc connection
