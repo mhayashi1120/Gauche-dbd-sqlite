@@ -140,8 +140,8 @@ SELECT id, name FROM hoge")
 ;; prepare flag
 
 (let* ([q0 (dbi-prepare *connection* "SELECT * FROM hoge")]
-       [q1 (dbi-prepare *connection* "SELECT * FROM hoge" :persistent? #t)]
-       [q2 (dbi-prepare *connection* "SELECT * FROM hoge" :pass-through #t :persistent? #t)]
+       [q1 (dbi-prepare *connection* "SELECT * FROM hoge" :persistent #t)]
+       [q2 (dbi-prepare *connection* "SELECT * FROM hoge" :pass-through #t :persistent #t)]
        [answer (relation-rows (dbi-execute q0))])
   (test* "Same result persistent query."
          answer
@@ -189,14 +189,13 @@ SELECT id, name FROM hoge")
              :last "LAST")
 
 
-(let* ([q (dbi-prepare *connection* "SELECT :a" :pass-through #t :strict-bind? #t)])
+(let* ([q (dbi-prepare *connection* "SELECT :a" :pass-through #t :strict-bind #t)])
   
   (test* "Strict bind (No parameter supplied.)" (test-error <dbi-parameter-error>)
          (query->result q))
 
-  ;; TODO reconsider
-  ;; (test* "Strict bind (Extra parameter supplied.)" (test-error)
-  ;;        (query->result q :a 1 :b 3))
+  (test* "Strict bind (Ignore extra parameter supplied.)" `(#(1))
+         (query->result q :a 1 :b 3))
   )
 
 (test-log "pass-through query")

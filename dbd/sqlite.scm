@@ -221,24 +221,26 @@
         (make <sqlite-connection>
           :%db-handle db)))))
 
-;; TODO SQLITE_PREPARE_* flags
 ;; NOTE: dbd.sqlite module simply ignore preceeding sql statement result.
 ;; SELECT 1; SELECT 1, 2;  -> (#(1 2))
 ;; SELECT 1, 2; UPDATE foo SET (col1 = "col1"); -> integer (dbd.sqlite specific)
+;; Supported keywords are:
+;; :pass-through : Boolean. This option just effect `pass-through` is #t
+;; :flags : Bitwise Integer hold SQLITE_PREPARE_*
+;; :persistent : Boolean value. If the statement would be alive long time.
+;; :strict-bind : Boolean. Binding parameter is not supplied, raise error when `dbi-execute`.
+;;     This is efficient when detect typo in SQL. And not report if extra parameter is supplied.
 (define-method dbi-prepare ((c <sqlite-connection>) (sql <string>)
                             . args)
   (let-keywords args
       ([pass-through #f]
-       ;; This option just effect `pass-through` is #t
-       ;; Error! "SELECT :a" with (:b = 1)
-       ;; TODO "SELECT :a" with (:a = 1, :b = 1)
-       [strict-bind? #f]
-       [persistent? #f]
+       [strict-bind #f]
+       [persistent #f]
        [flags #f]
        . restargs)
     (set! flags (or flags
                     (or
-                     (and persistent?
+                     (and persistent
                           SQLITE_PREPARE_PERSISTENT)
                      0)
                     ))
@@ -247,7 +249,7 @@
       (let* ([stmt (prepare-stmt (get-handle c) sql flags)]
              [query (make <sqlite-query>
                       :%stmt-handle stmt
-                      :strict-bind? strict-bind?
+                      :strict-bind? strict-bind
                       :prepared (^ args sql)
                       :connection c)]))]
      [else
