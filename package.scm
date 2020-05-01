@@ -4,7 +4,7 @@
 
 (define-gauche-package "Gauche-dbd-sqlite"
   ;; 
-  :version "0.5.4"
+  :version "0.5.5"
 
   ;; Description of the package.  The first line is used as a short
   ;; summary.

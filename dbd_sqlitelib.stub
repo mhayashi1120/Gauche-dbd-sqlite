@@ -30,12 +30,12 @@
 ;; Module internal
 ;;
 
-;; Required
+;; Required (Not exported)
 (define-enum SQLITE_OPEN_READONLY)
 (define-enum SQLITE_OPEN_READWRITE)
 (define-enum SQLITE_OPEN_CREATE)
 
-;; Optional flags
+;; Optional flags (Not exported)
 (define-enum-conditionally SQLITE_OPEN_URI)
 (define-enum-conditionally SQLITE_OPEN_MEMORY)
 (define-enum-conditionally SQLITE_OPEN_NOMUTEX)
@@ -50,6 +50,7 @@
 (define-cproc db-close (db::<sqlite-db>) :: <void>
   (closeDB db))
 
+;; Prepare flags (Not exported)
 (define-enum-conditionally SQLITE_PREPARE_PERSISTENT)
 (define-enum-conditionally SQLITE_PREPARE_NORMALIZE)
 (define-enum-conditionally SQLITE_PREPARE_NO_VTAB)

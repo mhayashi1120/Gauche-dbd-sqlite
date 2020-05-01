@@ -30,6 +30,7 @@
 (define-class <sqlite-connection> (<dbi-connection>)
   (
    (%db-handle :init-keyword :%db-handle)
+   (%queries :init-value '() :getter get-queries :setter set-queries!)
    ))
 
 (define-class <sqlite-query> (<dbi-query>)
@@ -232,6 +233,9 @@
 ;;     This is efficient when detect typo in SQL. And not report if extra parameter is supplied.
 (define-method dbi-prepare ((c <sqlite-connection>) (sql <string>)
                             . args)
+  (define (push-query! q)
+    (set-queries! c (cons q (get-queries c))))
+
   (let-keywords args
       ([pass-through #f]
        [strict-bind #f]
@@ -251,7 +255,9 @@
                       :%stmt-handle stmt
                       :strict-bind? strict-bind
                       :prepared (^ args sql)
-                      :connection c)]))]
+                      :connection c)])
+        (push-query! query)
+        query)]
      [else
       (let* ([prepared (dbi-prepare-sql c sql)]
              [query (make <sqlite-query>
@@ -261,6 +267,7 @@
                       :%stmt-flags flags
                       :connection c
                       :prepared prepared)])
+        (push-query! query)
         query)])))
 
 ;; SELECT -> return <sqlite-result>
@@ -333,14 +340,21 @@
   (and-let1 q (~ r 'source-query)
     (dbi-open? q)))
 
+(define-method purge-query ((c <sqlite-connection>) (q <sqlite-query>))
+  (let1 queries (delete q (get-queries c))
+    (set-queries! c queries)))
+
 (define-method dbi-close ((c <sqlite-connection>))
   (and-let1 h (get-handle c)
+    (dolist (q (get-queries c))
+      (dbi-close q))
     (db-close h)
     (clear-handle! c)))
 
 (define-method dbi-close ((q <sqlite-query>))
   (and-let1 h (get-handle q)
     (close-stmt h)
+    (purge-query (~ q'connection) q)
     (clear-handle! q)))
 
 (define-method dbi-close ((r <sqlite-result>))

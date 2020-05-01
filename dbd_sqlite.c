@@ -212,6 +212,8 @@ void closeDB(ScmSqliteDb * db)
 
     Scm_UnregisterFinalizer(SCM_OBJ(db));
 
+    return;
+
 error:
 
     if (errmsg == NULL)
