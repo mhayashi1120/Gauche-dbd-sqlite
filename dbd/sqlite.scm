@@ -35,6 +35,7 @@
 (define-class <sqlite-query> (<dbi-query>)
   (
    (%stmt-handle :init-keyword :%stmt-handle)
+   (%stmt-flags :init-keyword :%stmt-flags)
    (strict-bind? :init-keyword :strict-bind?)
    ))
 
@@ -232,10 +233,18 @@
        ;; Error! "SELECT :a" with (:b = 1)
        ;; TODO "SELECT :a" with (:a = 1, :b = 1)
        [strict-bind? #f]
+       [persistent? #f]
+       [flags #f]
        . restargs)
+    (set! flags (or flags
+                    (or
+                     (and persistent?
+                          SQLITE_PREPARE_PERSISTENT)
+                     0)
+                    ))
     (cond
      [pass-through
-      (let* ([stmt (prepare-stmt (get-handle c) sql)]
+      (let* ([stmt (prepare-stmt (get-handle c) sql flags)]
              [query (make <sqlite-query>
                       :%stmt-handle stmt
                       :strict-bind? strict-bind?
@@ -247,6 +256,7 @@
                       ;; This case not yet prepare statement.
                       ;; after accept user arguments from `dbi-execute` interface.
                       :%stmt-handle #f
+                      :%stmt-flags flags
                       :connection c
                       :prepared prepared)])
         query)])))
@@ -293,8 +303,9 @@
     (cond
      [(not (~ q'%stmt-handle))
       (let* ([prepared (~ q'prepared)]
+             [flags (~ q'%stmt-flags)]
              [sql (apply prepared params)]
-             [stmt (prepare-stmt (get-handle c) sql)])
+             [stmt (prepare-stmt (get-handle c) sql flags)])
         (slot-set! q '%stmt-handle stmt)
         params)]
      [else

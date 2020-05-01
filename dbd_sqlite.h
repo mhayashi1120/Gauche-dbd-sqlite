@@ -45,7 +45,7 @@ extern ScmObj getLibSqliteVersionNumber();
 extern void bindParameters(ScmSqliteStmt * stmt, ScmObj params);
 extern ScmObj openDB(ScmString * filenameArg, ScmObj optionAlist);
 extern void closeDB(ScmSqliteDb * db);
-extern ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql);
+extern ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags);
 extern void resetStmt(ScmSqliteStmt * stmt);
 extern void closeStmt(ScmSqliteStmt * stmt);
 extern ScmObj listParameters(ScmSqliteStmt * stmt);

@@ -137,6 +137,19 @@ SELECT id, name FROM hoge")
           "INSERT INTO hoge(id, name, created) VALUES (?, ?, ?);"
           4 "name4.5" "2020-04-30")
 
+;; prepare flag
+
+(let* ([q0 (dbi-prepare *connection* "SELECT * FROM hoge")]
+       [q1 (dbi-prepare *connection* "SELECT * FROM hoge" :persistent? #t)]
+       [q2 (dbi-prepare *connection* "SELECT * FROM hoge" :pass-through #t :persistent? #t)]
+       [answer (relation-rows (dbi-execute q0))])
+  (test* "Same result persistent query."
+         answer
+         (relation-rows (dbi-execute q1)))
+  (test* "Same result persistent query (pass-through)."
+         answer
+         (relation-rows (dbi-execute q2))))
+
 ;;;
 ;;; Pass through
 ;;;

@@ -50,8 +50,12 @@
 (define-cproc db-close (db::<sqlite-db>) :: <void>
   (closeDB db))
 
-(define-cproc prepare-stmt (db::<sqlite-db> query::<string>)
-  (return (prepareStmt db query)))
+(define-enum-conditionally SQLITE_PREPARE_PERSISTENT)
+(define-enum-conditionally SQLITE_PREPARE_NORMALIZE)
+(define-enum-conditionally SQLITE_PREPARE_NO_VTAB)
+
+(define-cproc prepare-stmt (db::<sqlite-db> query::<string> flags::<int>)
+  (return (prepareStmt db query flags)))
 
 (define-cproc reset-stmt (stmt::<sqlite-stmt>) :: <void>
   (resetStmt stmt))

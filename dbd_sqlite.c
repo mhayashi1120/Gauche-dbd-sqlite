@@ -118,16 +118,6 @@ static void raiseError(ScmString * msg)
     		       Scm_GetStringConst(msg));
 }
 
-ScmObj getLibSqliteVersionNumber()
-{
-    return Scm_MakeInteger(sqlite3_libversion_number());
-}
-
-ScmObj getLibSqliteVersion()
-{
-    return SCM_MAKE_STR_IMMUTABLE(sqlite3_libversion());
-}
-
 static ScmObj assocRefOption(const char * key, ScmObj optionAlist)
 {
     ScmObj pair = Scm_Assoc(SCM_MAKE_STR_IMMUTABLE(key), optionAlist, SCM_CMP_EQUAL);
@@ -137,6 +127,17 @@ static ScmObj assocRefOption(const char * key, ScmObj optionAlist)
     }
 
     return SCM_CDR(pair);
+}
+
+
+ScmObj getLibSqliteVersionNumber()
+{
+    return Scm_MakeInteger(sqlite3_libversion_number());
+}
+
+ScmObj getLibSqliteVersion()
+{
+    return SCM_MAKE_STR_IMMUTABLE(sqlite3_libversion());
 }
 
 ScmObj openDB(ScmString * filenameArg, ScmObj optionAlist)
@@ -219,10 +220,10 @@ error:
     raiseError(errmsg);
 }
 
-ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
+ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags)
 {
     const char * zSql = Scm_GetStringConst(sql);
-    unsigned int prepFlags = 0;
+    unsigned int prepFlags = flags;
     sqlite3_stmt * pStmt = NULL;
     const char * zTail = zSql;
     ScmString * errmsg = NULL;
@@ -235,7 +236,7 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql)
     while (1) {
 	int result = sqlite3_prepare_v3(
 	    db->ptr, zSql, -1,
-	    /* Zero or more SQLITE_PREPARE_ flags */
+	    /* Zero or more SQLITE_PREPARE_* flags */
 	    prepFlags,
 	    &pStmt, &zTail
 	    );
