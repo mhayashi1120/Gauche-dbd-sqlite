@@ -22,7 +22,7 @@ bind-parameter accepts :hoge-foo -> :hoge\_foo
        (dbi-execute insert 1 "John Doe")
        (dbi-execute insert 2 "名無しさん")
 
-       (let* ([result (dbi-do con "SELECT * FROM account")]
+       (let* ([result (dbi-do con "SELECT id, name FROM account")]
               [getter (relation-accessor result)])
          (map
           (^r
@@ -45,7 +45,7 @@ bind-parameter accepts :hoge-foo -> :hoge\_foo
     (match-lambda
      [#(id name)
      (format #t "ID: ~s Name: ~s\n" id name)])
-    (dbi-do con "SELECT * FROM account"))
+    (dbi-do con "SELECT id, name FROM account"))
    (dbi-close con)))
 ```
 
@@ -72,7 +72,7 @@ bind-parameter accepts :hoge-foo -> :hoge\_foo
       (match-lambda
        [#(id name)
         (format #t "ID: ~s Name: ~s\n" id name)])
-      (dbi-do con "SELECT * FROM account")))
+      (dbi-do con "SELECT id, name FROM account")))
    (dbi-close con)))
 ```
 
@@ -86,7 +86,7 @@ https://www.sqlite.org/c3ref/funclist.html
 ## History
 
 TODO とりあえず書きはじめ。これ書いていくつかの TODO fix して、手許の既存スクリプトが動作したらとりあえず github に up する
-旧はアーカイブに
+旧 repository はアーカイブに
 
 This similar module exists here:
 https://github.com/mhayashi1120/Gauche-dbd-sqlite3/
@@ -101,16 +101,13 @@ https://github.com/mhayashi1120/Gauche-dbd-sqlite3/issues/1
 
 git init 初期の頃からできるだけ小まめに commit しながら、自身 (mhayashi1120@gmail.com) がゼロから作った証跡として残しときます。
 
-長時間動くプログラムだとメモリリークしていた様子がある。
-
 前の Gauche-dbd-sqlite3 との違い。
 
+(dbi-connect "dbi:sqlite3:**filename**") -> (dbi-connect "dbi:sqlite:**filename**")
 Gauche-dbd-sqlite3 のソースは読まない縛り。
-
+長時間動くプログラムだとメモリリークしていた様子がある。
 Gauche の dbi interface に忠実になった。
 
-"dbi:sqlite3:**filename**" -> "dbi:sqlite:**filename**"
 
 旧バージョンのソースは見ていないので違いは不正確であること
 
-マルチバイト文字の test

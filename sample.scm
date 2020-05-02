@@ -4,6 +4,7 @@
 ;;; Basic access
 ;;;
 
+(print "---------- Simple ------------")
 (use dbi)
 
 (let1 con (dbi-connect "dbi:sqlite:sample.sqlite")
@@ -14,7 +15,7 @@
        (dbi-execute insert 1 "John Doe")
        (dbi-execute insert 2 "名無しさん")
 
-       (let* ([result (dbi-do con "SELECT * FROM account")]
+       (let* ([result (dbi-do con "SELECT id, name FROM account")]
               [getter (relation-accessor result)])
          (map
           (^r
@@ -26,6 +27,8 @@
 ;;; Simplify match library & <sequence>
 ;;;
 
+(print "---------- Simplify SELECT ------------")
+
 (use util.match)
 (use gauche.sequence)
 
@@ -35,7 +38,7 @@
     (match-lambda
      [#(id name)
      (format #t "ID: ~s Name: ~s\n" id name)])
-    (dbi-do con "SELECT * FROM account"))
+    (dbi-do con "SELECT id, name FROM account"))
    (dbi-close con)))
 
 
@@ -51,6 +54,8 @@
 ;;; Named bindings with pass-through query
 ;;;
 
+(print "---------- Named binding  and Persistent query ------------")
+
 (let1 con (dbi-connect "dbi:sqlite:sample.sqlite;")
   (unwind-protect
    (begin
@@ -63,7 +68,7 @@
       (match-lambda
        [#(id name)
         (format #t "ID: ~s Name: ~s\n" id name)])
-      (dbi-do con "SELECT * FROM account")))
+      (dbi-do con "SELECT id, name FROM account")))
    (dbi-close con)))
 
 
