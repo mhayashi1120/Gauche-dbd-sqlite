@@ -18,7 +18,7 @@
               [getter (relation-accessor result)])
          (map
           (^r
-           (format #t "ID: ~a Name: ~a\n" (getter r "id") (getter r "name")))
+           (format #t "ID: ~s Name: ~s\n" (getter r "id") (getter r "name")))
           (relation-rows result)))))
    (dbi-close con)))
 
@@ -34,7 +34,7 @@
    (map
     (match-lambda
      [#(id name)
-     (format #t "ID: ~a Name: ~a\n" id name)])
+     (format #t "ID: ~s Name: ~s\n" id name)])
     (dbi-do con "SELECT * FROM account"))
    (dbi-close con)))
 
@@ -62,7 +62,7 @@
      (map
       (match-lambda
        [#(id name)
-        (format #t "ID: ~a Name: ~a\n" id name)])
+        (format #t "ID: ~s Name: ~s\n" id name)])
       (dbi-do con "SELECT * FROM account")))
    (dbi-close con)))
 
