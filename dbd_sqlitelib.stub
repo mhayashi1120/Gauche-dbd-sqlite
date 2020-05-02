@@ -47,7 +47,7 @@
 (define-cproc open-db (path::<string> option-alist)
   (return (openDB path option-alist)))
 
-(define-cproc db-close (db::<sqlite-db>) :: <void>
+(define-cproc close-db (db::<sqlite-db>) :: <void>
   (closeDB db))
 
 ;; Prepare flags (Not exported)

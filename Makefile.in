@@ -77,6 +77,11 @@ clean :
 distclean : clean
 	rm -rf $(CONFIG_GENERATED)
 
-maintainer-clean : clean
+maintainer-clean : clean-sample clean
 	rm -rf $(CONFIG_GENERATED)  VERSION
 
+clean-sample:
+	rm -f sample.sqlite
+
+do-sample: clean-sample
+	$(GOSH) -I . -I$(srcdir) $(srcdir)/sample.scm

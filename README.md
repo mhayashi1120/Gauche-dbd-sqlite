@@ -2,26 +2,64 @@
 
 ## TODO
 
-https://www.sqlite.org/c3ref/funclist.html
 
 can return number of update, insert, delete after execute https://www.sqlite.org/c3ref/changes.html
 bind-parameter accepts :hoge-foo -> :hoge\_foo 
 
 
-Samples
-
-```
-(use gauche.sequence) 
-
+## Samples
 
 ```
 
+TODO dbi-connect -> dbi-prepare -> dbi-execute
+
+(let1 con (dbi-connect "dbi:sqlite:sample.sqlite")
+	(unwind-protect
+		(dbi-do con "CREATE TABLE account (id PRIMARY KEY, name);")
+	  (dbi-close con)))
+
+```
+
+INSERT
+ 
+
+```
+TODO dbi-connect dbi-do
+```
+
+SELECT
 ```
 (match row
   (#(id name)
    ...)
    )
 ```
+
+
+```
+dbi-connect options
+- fullmutex
+- timeout
+
+(let1 conn (dbi-connect "dbi:sqlite:sample.sqlite;fullmutex;timeout=3000;")
+  )
+
+```
+
+```
+dbi-prepare options
+- persistent
+- pass-through
+
+(dbi-prepare conn "SELECT * FROM account WHERE id = :id")
+
+```
+
+
+## Ref
+
+https://www.sqlite.org/c3ref/funclist.html
+
 
 
 ## History
@@ -56,3 +94,5 @@ Gauche の dbi interface に忠実になった。
 
 
 raise internal error as <sqlite-error>
+
+マルチバイト文字の test

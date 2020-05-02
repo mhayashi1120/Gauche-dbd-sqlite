@@ -121,7 +121,7 @@ SELECT id, name FROM hoge")
           "SELECT ?, ?, ?, ?, ?"
           1 2 "three" 4.0 #f)
 
-(test-sql "Not like pass-through query u8vector not supported."
+(test-sql "Not like pass-through query u8vector is not supported."
           (test-error <dbi-parameter-error>)
           "SELECT ?"
           #u8(1 2 3))
@@ -136,6 +136,16 @@ SELECT id, name FROM hoge")
           (test-error <sqlite-error> #/constraint/i)
           "INSERT INTO hoge(id, name, created) VALUES (?, ?, ?);"
           4 "name4.5" "2020-04-30")
+
+(let* ([q (dbi-prepare *connection* "INSERT INTO hoge(id, name, created) VALUES (?, ?, ?);")])
+  (dbi-execute q 5 "name5" "2020-04-30")
+  (dbi-execute q 6 "name6" "2020-05-01")
+  (dbi-execute q 7 "name7" "2020-05-02")
+  (append-rowids! 5 6 7)
+  (test* "Persistent prepared query is working"
+         `(#(5) #(6) #(7))
+         (relation-rows (dbi-do *connection* "SELECT id FROM hoge WHERE id in (5,6,7)"))))
+
 
 ;; prepare flag
 
@@ -273,6 +283,20 @@ SELECT id, name FROM hoge")
            `(#(104))
            "SELECT id FROM hoge WHERE id = :id"
            :id 104)
+
+
+(let* ([q (dbi-prepare *connection* "INSERT INTO hoge(id, name, created) VALUES (?, ?, ?);" :pass-through #t :persistent #t)])
+  (dbi-execute q 105 "name105" "2020-04-30")
+  (dbi-execute q 106 "name106" "2020-05-01")
+  (dbi-execute q 107 "name107" "2020-05-02")
+  (append-rowids! 105 106 107)
+  (test* "Persistent prepared query is working (Pass-through)"
+         `(#(105) #(106) #(107))
+         (relation-rows (dbi-do *connection* "SELECT id FROM hoge WHERE id in (105,106,107)"))))
+
+;;;
+;;; generator
+;;;
 
 (test-log "Generator (cursor) test")
 (use gauche.generator)

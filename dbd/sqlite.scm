@@ -3,6 +3,8 @@
 ;;;
 
 (define-module dbd.sqlite
+  (use scheme.list)
+  (use scheme.vector)
   (use util.match)
   (use text.tr)
   (use dbi)
@@ -105,10 +107,11 @@
   (list-columns (get-handle r)))
 
 (define-method relation-accessor ((r <sqlite-result>))
-  (^ [t c]
-    (and-let* ([index (vector-index (^ [x] (string-ci=? c x)) t)]
-               [(< index (vector-length t))])
-      (vector-ref t index))))
+  (let1 columns (relation-column-names r)
+    (^ [t c]
+      (and-let* ([index (list-index (^ [x] (string-ci=? c x)) columns)]
+                 [(< index (vector-length t))])
+        (vector-ref t index)))))
 
 (define-method relation-modifier ((r <sqlite-result>))
   #f)
@@ -224,7 +227,7 @@
 
 ;; NOTE: dbd.sqlite module simply ignore preceeding sql statement result.
 ;; SELECT 1; SELECT 1, 2;  -> (#(1 2))
-;; SELECT 1, 2; UPDATE foo SET (col1 = "col1"); -> integer (dbd.sqlite specific)
+;; SELECT 1, 2; UPDATE foo SET col1 = "col1"; -> undefined
 ;; Supported keywords are:
 ;; :pass-through : Boolean. This option just effect `pass-through` is #t
 ;; :flags : Bitwise Integer hold SQLITE_PREPARE_*
@@ -254,7 +257,7 @@
              [query (make <sqlite-query>
                       :%stmt-handle stmt
                       :strict-bind? strict-bind
-                      :prepared (^ args sql)
+                      :prepared #f
                       :connection c)])
         (push-query! query)
         query)]
@@ -310,7 +313,7 @@
 
   (define (ensure-prepare&params)
     (cond
-     [(not (~ q'%stmt-handle))
+     [(~ q'prepared)
       (let* ([prepared (~ q'prepared)]
              [flags (~ q'%stmt-flags)]
              [sql (apply prepared params)]
@@ -340,7 +343,7 @@
   (and-let1 q (~ r 'source-query)
     (dbi-open? q)))
 
-(define-method purge-query ((c <sqlite-connection>) (q <sqlite-query>))
+(define-method purge-query! ((c <sqlite-connection>) (q <sqlite-query>))
   (let1 queries (delete q (get-queries c))
     (set-queries! c queries)))
 
@@ -348,13 +351,13 @@
   (and-let1 h (get-handle c)
     (dolist (q (get-queries c))
       (dbi-close q))
-    (db-close h)
+    (close-db h)
     (clear-handle! c)))
 
 (define-method dbi-close ((q <sqlite-query>))
   (and-let1 h (get-handle q)
     (close-stmt h)
-    (purge-query (~ q'connection) q)
+    (purge-query! (~ q'connection) q)
     (clear-handle! q)))
 
 (define-method dbi-close ((r <sqlite-result>))
