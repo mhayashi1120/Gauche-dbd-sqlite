@@ -107,6 +107,20 @@ INSERT INTO hoge(id, name, created) VALUES (3, 'n3', '2020-03-04 02:03:04');
 SELECT id, name FROM hoge")
 (append-rowids! 1 2 3)
 
+(let1 result (dbi-do *connection* "SELECT id, name FROM hoge WHERE id = 1")
+  (test* "Relation accessor (columns)"
+         `("id" "name")
+         (relation-column-names result))
+  (let* ([top (car (relation-rows result))]
+         [getter (relation-accessor result)])
+    (test* "Relation accessor (column)"
+           1
+           (getter top "id"))
+    (test* "Relation accessor (column)"
+           "n1"
+           (getter top "name")))
+  )
+
 ;; Ignore first statement result
 (test-sql "Multiple statements and get last statement result. 2"
           `(#(1 2))
@@ -140,12 +154,15 @@ SELECT id, name FROM hoge")
 (let* ([q (dbi-prepare *connection* "INSERT INTO hoge(id, name, created) VALUES (?, ?, ?);")])
   (dbi-execute q 5 "name5" "2020-04-30")
   (dbi-execute q 6 "name6" "2020-05-01")
-  (dbi-execute q 7 "name7" "2020-05-02")
+  (dbi-execute q 7 "名前7" "2020-05-02")
   (append-rowids! 5 6 7)
   (test* "Persistent prepared query is working"
          `(#(5) #(6) #(7))
          (relation-rows (dbi-do *connection* "SELECT id FROM hoge WHERE id in (5,6,7)"))))
 
+(test* "Read multibyte string"
+       #("名前7")
+       (car (relation-rows (dbi-do *connection* "SELECT name FROM hoge WHERE id = 7"))))
 
 ;; prepare flag
 

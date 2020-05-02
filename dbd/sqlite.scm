@@ -109,9 +109,9 @@
 (define-method relation-accessor ((r <sqlite-result>))
   (let1 columns (relation-column-names r)
     (^ [t c]
-      (and-let* ([index (list-index (^ [x] (string-ci=? c x)) columns)]
-                 [(< index (vector-length t))])
-        (vector-ref t index)))))
+      (and-let* ([index (find-index (^ [x] (string-ci=? c x)) columns)]
+                 [(< index (size-of t))])
+        (ref t index)))))
 
 (define-method relation-modifier ((r <sqlite-result>))
   #f)

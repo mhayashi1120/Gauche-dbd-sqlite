@@ -34,7 +34,7 @@ static ScmObj readRow(sqlite3_stmt * pStmt)
 	{
 	    const char * text = sqlite3_column_text(pStmt, i);
 	    const int size = sqlite3_column_bytes(pStmt, i);
-	    const ScmObj str = Scm_MakeString(text, size, size, SCM_STRING_COPYING);
+	    const ScmObj str = Scm_MakeString(text, size, -1, SCM_STRING_COPYING);
 
 	    Scm_VectorSet(v, i, str);
 	    break;

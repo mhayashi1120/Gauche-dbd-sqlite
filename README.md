@@ -112,9 +112,6 @@ Gauche の dbi interface に忠実になった。
 
 "dbi:sqlite3:**filename**" -> "dbi:sqlite:**filename**"
 
-旧バージョンのソースは見ていないので不正確
-
-
-raise internal error as <sqlite-error>
+旧バージョンのソースは見ていないので違いは不正確であること
 
 マルチバイト文字の test
