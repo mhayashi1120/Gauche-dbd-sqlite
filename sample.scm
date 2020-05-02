@@ -1,5 +1,9 @@
 #!/usr/bin/env gosh
 
+;;;
+;;; Basic access
+;;;
+
 (use dbi)
 
 (let1 con (dbi-connect "dbi:sqlite:sample.sqlite")
@@ -18,6 +22,9 @@
           (relation-rows result)))))
    (dbi-close con)))
 
+;;;
+;;; Simplify match library & <sequence>
+;;;
 
 (use util.match)
 (use gauche.sequence)
@@ -32,14 +39,23 @@
    (dbi-close con)))
 
 
+;;;
+;;; Fullmutex options
+;;;
+
 (let1 con (dbi-connect "dbi:sqlite:sample.sqlite;fullmutex;timeout=3000;")
   ;; ***do-something in multi-thread***
   )
 
+;;;
+;;; Named bindings with pass-through query
+;;;
+
 (let1 con (dbi-connect "dbi:sqlite:sample.sqlite;")
   (unwind-protect
    (begin
-     (let1 i (dbi-prepare con "INSERT INTO account (id, name) VALUES (:id, :name)" :pass-through #t :persistent #t)
+     (let1 i (dbi-prepare con "INSERT INTO account (id, name) VALUES (:id, :name)"
+                          :pass-through #t :persistent #t)
        (dbi-execute i :id 3 :name "hoge")
        (dbi-execute i :id 4 :name "hoge hoge")
        (dbi-execute i :id 5 :name "hoge hoge hoge"))
