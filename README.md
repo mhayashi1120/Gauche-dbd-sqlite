@@ -95,19 +95,22 @@ But have License problem
 
 https://github.com/mhayashi1120/Gauche-dbd-sqlite3/issues/1
 
-ライセンスに問題があったため、ゼロから作り直したいと思っていたものです。
+ライセンスの確認がとれない問題があり、ゼロから作り直したいと思っていたものです。
 
-最初にライセンスをきちんと確認しなかったのは痛い失敗だったので、
+fork した際に **ライセンスをきちんと確認しなかったのは痛い失敗** でした。
+Gauche-dbd-sqlite3 のソースは読まない縛り。ここ数年間まったく見ていません。
 
 git init 初期の頃からできるだけ小まめに commit しながら、自身 (mhayashi1120@gmail.com) がゼロから作った証跡として残しときます。
 
 前の Gauche-dbd-sqlite3 との違い。
 
-(dbi-connect "dbi:sqlite3:**filename**") -> (dbi-connect "dbi:sqlite:**filename**")
-Gauche-dbd-sqlite3 のソースは読まない縛り。
-長時間動くプログラムだとメモリリークしていた様子がある。
+(dbi-connect "dbi:sqlite3:*filename*") -> (dbi-connect "dbi:sqlite:*filename*")
+
+長時間動くプログラムだとメモリリークしていた様子がある。Finalize の処理をしていなかったためと思われる。
 Gauche の dbi interface に忠実になった。
 
 
 旧バージョンのソースは見ていないので違いは不正確であること
 
+
+TODO readColumns return vector like mysql.scm

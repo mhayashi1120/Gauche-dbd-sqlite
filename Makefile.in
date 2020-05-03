@@ -43,13 +43,10 @@ GAUCHE_PKGARCHDIR = "$(DESTDIR)@GAUCHE_PKGARCHDIR@"
 dbd_sqlite_SRCS = $(srcdir)/dbd_sqlite.c $(srcdir)/dbd_sqlitelib.stub
 dbd_sqlite_HDRS = $(srcdir)/dbd_sqlite.h
 
-MY_DEBUG_COMPILE = --keep-c-files
-
 all : $(TARGET)
 
 dbd_sqlite.$(SOEXT): $(dbd_sqlite_SRCS) $(dbd_sqlite_HDRS)
 	$(GAUCHE_PACKAGE) compile \
-	  $(MY_DEBUG_COMPILE) \
 	  --ldflags=$(LDFLAGS) \
 	  --libs=$(LIBS) \
 	  --local=$(LOCAL_PATHS) --verbose dbd_sqlite $(dbd_sqlite_SRCS)
