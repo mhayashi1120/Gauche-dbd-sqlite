@@ -301,7 +301,6 @@ SELECT id, name FROM hoge")
            "SELECT id FROM hoge WHERE id = :id"
            :id 104)
 
-
 (let* ([q (dbi-prepare *connection* "INSERT INTO hoge(id, name, created) VALUES (?, ?, ?);" :pass-through #t :persistent #t)])
   (dbi-execute q 105 "name105" "2020-04-30")
   (dbi-execute q 106 "name106" "2020-05-01")
@@ -310,6 +309,17 @@ SELECT id, name FROM hoge")
   (test* "Persistent prepared query is working (Pass-through)"
          `(#(105) #(106) #(107))
          (relation-rows (dbi-do *connection* "SELECT id FROM hoge WHERE id in (105,106,107)"))))
+
+
+(test-sql*
+ "Statement has space at end"
+ 1
+ "INSERT INTO hoge (id, name, created) VALUES (:id, :name, :created);\n"
+ :id 108
+ :name "name108"
+ :created "2020-05-03")
+
+(append-rowids! 108)
 
 ;;;
 ;;; generator
@@ -410,22 +420,18 @@ SELECT id, name FROM hoge")
 
 (use gauche.process)
 
-(set! *connection* (dbi-connect #"dbi:sqlite:~|*temp-sqlite*|;fullmutex;"))
+;; (set! *connection* (dbi-connect #"dbi:sqlite:~|*temp-sqlite*|;fullmutex;"))
+(set! *connection* (dbi-connect #"dbi:sqlite:~|*temp-sqlite*|;"))
 
 
 (use gauche.threads)
-
-;;TODO threading tests
-;; 1. multiple process is serialized.
-;; 2. multiple thread is serialized.
-
 
 (dbi-close *connection*)
 
 ;; TODO uri filename
 
 ;; TODO other connect option
-;; TODO check timeout
+;; TODO check timeout behavior
 
 
 ;; If you don't want `gosh' to exit with nonzero status even if

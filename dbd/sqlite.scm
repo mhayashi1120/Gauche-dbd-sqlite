@@ -3,6 +3,7 @@
 ;;;
 
 (define-module dbd.sqlite
+  (use srfi-13)
   (use scheme.list)
   (use scheme.vector)
   (use util.match)
@@ -253,7 +254,11 @@
                     ))
     (cond
      [pass-through
-      (let* ([stmt (prepare-stmt (get-handle c) sql flags)]
+      (let* (                          
+             ;; Workaround fix. Trim end of spaces to avoid
+             ;; fail to prepare. (e.g. "UPDATE hoge SET foo = :aa;\n")
+             [sql (string-trim-right sql #[\s\t\n])]
+             [stmt (prepare-stmt (get-handle c) sql flags)]
              [query (make <sqlite-query>
                       :%stmt-handle stmt
                       :strict-bind? strict-bind
