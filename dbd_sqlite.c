@@ -64,15 +64,15 @@ static ScmObj readColumns(sqlite3_stmt * pStmt)
 	return NULL;
     }
 
-    ScmObj result = SCM_NIL;
+    ScmVector * result = SCM_VECTOR(Scm_MakeVector(col, SCM_FALSE));
 
-    for (int i = col - 1; 0 <= i; i--) {
+    for (int i = 0; i < col; i++) {
 	const char * name = sqlite3_column_name(pStmt, i);
 
-	result = Scm_Cons(SCM_MAKE_STR_COPYING(name), result);
+	Scm_VectorSet(result, i, SCM_MAKE_STR_COPYING(name));
     }
 
-    return result;
+    return SCM_OBJ(result);
 }
 
 static void finalizeDBMaybe(ScmObj z, void *data)

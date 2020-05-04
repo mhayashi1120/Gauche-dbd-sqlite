@@ -1,5 +1,7 @@
 # Gauche-dbd-sqlite
 
+This module is newly created version of Gauche sqlite binding.
+
 ## TODO
 
 
@@ -80,8 +82,8 @@ bind-parameter accepts :hoge-foo -> :hoge\_foo
 ## Ref
 
 https://www.sqlite.org/c3ref/funclist.html
-
-
+http://practical-scheme.net/gauche/
+https://github.com/kahua/Gauche-dbd-mysql
 
 ## History
 

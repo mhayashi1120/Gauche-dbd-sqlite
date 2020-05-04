@@ -109,7 +109,7 @@ SELECT id, name FROM hoge")
 
 (let1 result (dbi-do *connection* "SELECT id, name FROM hoge WHERE id = 1")
   (test* "Relation accessor (columns)"
-         `("id" "name")
+         #("id" "name")
          (relation-column-names result))
   (let* ([top (car (relation-rows result))]
          [getter (relation-accessor result)])

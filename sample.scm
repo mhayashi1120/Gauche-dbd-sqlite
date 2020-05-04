@@ -1,10 +1,12 @@
 #!/usr/bin/env gosh
 
+
+(print "---------- Basic access ------------")
+
 ;;;
 ;;; Basic access
 ;;;
 
-(print "---------- Simple ------------")
 (use dbi)
 
 (let1 con (dbi-connect "dbi:sqlite:sample.sqlite")
@@ -23,11 +25,12 @@
           (relation-rows result)))))
    (dbi-close con)))
 
+
+(print "---------- Simplify SELECT ------------")
+
 ;;;
 ;;; Simplify match library & <sequence>
 ;;;
-
-(print "---------- Simplify SELECT ------------")
 
 (use util.match)
 (use gauche.sequence)
@@ -42,6 +45,7 @@
    (dbi-close con)))
 
 
+
 ;;;
 ;;; Fullmutex options
 ;;;
@@ -50,11 +54,13 @@
   ;; ***do-something in multi-thread***
   )
 
+
+
+(print "---------- Named binding  and Persistent query ------------")
+
 ;;;
 ;;; Named bindings with pass-through query
 ;;;
-
-(print "---------- Named binding  and Persistent query ------------")
 
 (let1 con (dbi-connect "dbi:sqlite:sample.sqlite;")
   (unwind-protect
