@@ -161,6 +161,16 @@ SELECT id, name FROM hoge")
        #("名前7")
        (car (relation-rows (dbi-do *connection* "SELECT name FROM hoge WHERE id = 7"))))
 
+(test-sql
+ "Last empty statement is simply ignored"
+ `(#(1))
+ "SELECT 1 ; ;")
+
+(test-sql
+ "Last empty statement is simply ignored (with space)"
+ `(#(1))
+ "SELECT 1 ; ; ")
+
 ;; prepare flag
 
 (let* ([q0 (dbi-prepare *connection* "SELECT * FROM hoge")]
@@ -403,7 +413,6 @@ SELECT id, name FROM hoge")
 (error-test "No existing object" "SELECT 1 FROM hoge1")
 (error-test "First statement has no existing object" "SELECT 1 FROM hoge1; No meaning statement;")
 (error-test "Last statement has syntax error" "SELECT 1 FROM hoge; No meaning statement;")
-(error-test "Empty statement" "SELECT 1 ; ;")
 
 ;;;
 ;;; Teardown

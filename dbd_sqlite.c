@@ -254,10 +254,8 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags)
 	    goto error;
 	}
 
-	if (pStmt == NULL) {
-	    errmsg = dupErrorMessage("Unknown error: statement is not prepared.");
-	    goto error;
-	}
+	if (pStmt == NULL)
+	    break;
 
 	SCM_ASSERT(zTail != zSql);
 

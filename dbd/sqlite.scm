@@ -255,9 +255,6 @@
     (cond
      [pass-through
       (let* (                          
-             ;; Workaround fix. Trim end of spaces to avoid
-             ;; fail to prepare. (e.g. "UPDATE hoge SET foo = :aa;\n")
-             [sql (string-trim-right sql #[\s\t\n])]
              [stmt (prepare-stmt (get-handle c) sql flags)]
              [query (make <sqlite-query>
                       :%stmt-handle stmt
