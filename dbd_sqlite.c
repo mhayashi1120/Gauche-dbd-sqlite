@@ -6,6 +6,15 @@
 
 #include <sqlite3.h>
 
+static sqlite3_stmt ** reallocStatements(sqlite3_stmt ** src, int currentLength, int nextLength)
+{
+    sqlite3_stmt ** dest = SCM_NEW_ATOMIC_ARRAY(sqlite3_stmt*, nextLength);
+
+    memcpy(dest, src, sizeof(sqlite3_stmt*) * nextLength);
+
+    return dest;
+}
+
 static ScmObj readRow(sqlite3_stmt * pStmt)
 {
     int col = sqlite3_column_count(pStmt);
@@ -259,7 +268,12 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags)
 
 	SCM_ASSERT(zTail != zSql);
 
-	/* TODO grow allocation */
+	/* grow allocation */
+	if (maxCount <= count) {
+	    pStmts = reallocStatements(pStmts, maxCount, maxCount * 2);
+	    maxCount = maxCount * 2;
+	}
+
 	pStmts[count] = pStmt;
 	pLastStmt = pStmt;
 	pStmt = NULL;
@@ -277,6 +291,10 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags)
 
     stmt->columns = readColumns(pLastStmt);
     stmt->db = db;
+    /* Maybe shrink allocation */
+    if (count < maxCount) {
+	pStmts = reallocStatements(pStmts, count, count);
+    }
     stmt->pptr = pStmts;
     stmt->ptrCount = count;
 

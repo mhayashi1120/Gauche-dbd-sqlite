@@ -51,7 +51,8 @@
 
 (test-log "Basic construction.")
 
-(dolist (q `("SELECT 1"
+(dolist (q `(""
+             "SELECT 1"
              "SELECT 1;"
              "SELECT 1; SELECT 2"
              "SELECT 1; SELECT 2;"
@@ -170,6 +171,19 @@ SELECT id, name FROM hoge")
  "Last empty statement is simply ignored (with space)"
  `(#(1))
  "SELECT 1 ; ; ")
+
+(dolist (q `("SELECT 1 ; ; SELECT 2"
+             "SELECT 1 ; ; SELECT 2"
+             "SELECT 1 ; ; SELECT 2;"
+             "SELECT 1 ; ; SELECT 2; "))
+  (test-sql
+   #"Middle empty statement is simply ignored ~|q|"
+   `(#(2))
+   q))
+
+(test-sql "Many statements in the SQL"
+          `(#(5))
+          "SELECT 1 ; SELECT 2; SELECT 3; SELECT 4; SELECT 5;")
 
 ;; prepare flag
 
