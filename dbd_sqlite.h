@@ -26,11 +26,10 @@ SCM_CLASS_DECL(Scm_SqliteDbClass);
 typedef struct ScmSqliteStmtRec {
 	SCM_HEADER;
 	ScmSqliteDb * db;
-	// TODO move to cclass
-	ScmString * sql;
-	// TODO move to cclass
+	// This columns just hold last statement in SQL
 	ScmObj columns;
-	sqlite3_stmt * ptr; /* NULL if closed */
+	int ptrCount;
+	sqlite3_stmt ** pptr; /* NULL if closed */
 } ScmSqliteStmt;
 
 SCM_CLASS_DECL(Scm_SqliteStmtClass);
@@ -42,15 +41,15 @@ extern ScmObj getLibSqliteVersion();
 
 extern ScmObj getLibSqliteVersionNumber();
 
-extern void bindParameters(ScmSqliteStmt * stmt, ScmObj params);
+extern void bindParameters(ScmSqliteStmt * stmt, int i, ScmObj params);
 extern ScmObj openDB(ScmString * filenameArg, ScmObj optionAlist);
 extern void closeDB(ScmSqliteDb * db);
 extern ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags);
-extern void resetStmt(ScmSqliteStmt * stmt);
+extern void resetStmt(ScmSqliteStmt * stmt, int i);
 extern void closeStmt(ScmSqliteStmt * stmt);
-extern ScmObj listParameters(ScmSqliteStmt * stmt);
+extern ScmObj listParameters(ScmSqliteStmt * stmt, int i);
 extern ScmObj readLastChanges(ScmSqliteStmt * stmt);
-extern ScmObj readResult(ScmSqliteStmt * stmt);
+extern ScmObj readResult(ScmSqliteStmt * stmt, int i);
 
 /* Epilogue */
 SCM_DECL_END

@@ -227,13 +227,19 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags)
     const char * zSql = Scm_GetStringConst(sql);
     unsigned int prepFlags = flags;
     sqlite3_stmt * pStmt = NULL;
+    sqlite3_stmt * pLastStmt = NULL;
     const char * zTail = zSql;
     ScmString * errmsg = NULL;
+    sqlite3_stmt ** pStmts = NULL;
+    int count = 0;
+    int maxCount = 4;
 
     if (db->ptr == NULL) {
 	errmsg = dupErrorMessage("Database has been closed.");
 	goto error;
     }
+
+    pStmts = SCM_NEW_ATOMIC_ARRAY(sqlite3_stmt*, maxCount);
 
     while (1) {
 	int result = sqlite3_prepare_v3(
@@ -253,37 +259,28 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags)
 	    goto error;
 	}
 
-	if (*zTail == '\0')
-	    break;
-
 	SCM_ASSERT(zTail != zSql);
 
-	int stepResult = sqlite3_step(pStmt);
-
-	/* ignore result until last statement. */
-	sqlite3_finalize(pStmt);
-
-	if (stepResult != SQLITE_DONE &&
-	    stepResult != SQLITE_ROW) {
-	    errmsg = dupErrorMessage("sqlite step failed");
-	    goto error;
-	}
-
+	/* TODO grow allocation */
+	pStmts[count] = pStmt;
+	pLastStmt = pStmt;
 	pStmt = NULL;
 	zSql = zTail;
+	count++;
+
+	if (*zTail == '\0')
+	    break;
     }
     
-    SCM_ASSERT(pStmt != NULL);
-
     ScmSqliteStmt * stmt = SCM_NEW(ScmSqliteStmt);
     SCM_SET_CLASS(stmt, SCM_CLASS_SQLITE_STMT);
 
     Scm_RegisterFinalizer(SCM_OBJ(stmt), finalizeStmtMaybe, NULL);
 
-    stmt->columns = readColumns(pStmt);
+    stmt->columns = readColumns(pLastStmt);
     stmt->db = db;
-    stmt->sql = SCM_STRING(SCM_MAKE_STR_COPYING(zSql));
-    stmt->ptr = pStmt;
+    stmt->pptr = pStmts;
+    stmt->ptrCount = count;
 
     return SCM_OBJ(stmt);
 
@@ -298,23 +295,24 @@ error:
 /* This function return list that contains ScmString with those prefix */
 /* e.g. "SELECT :hoge, @foo" sql -> (":hoge" "@foo")  */
 /* NOTE: edge case, Programmer can choose "SELECT ?999" as a parameter. */
-ScmObj listParameters(ScmSqliteStmt * stmt)
+ScmObj listParameters(ScmSqliteStmt * stmt, int i)
 {
     ScmString * errmsg = NULL;
+    sqlite3_stmt ** pStmts = stmt->pptr;
+    ScmObj result = SCM_NIL;
+    sqlite3_stmt * pStmt = pStmts[i];
 
-    if (stmt->ptr == NULL) {
+    if (pStmt == NULL) {
 	errmsg = dupErrorMessage("Statement has been closed.");
 	goto error;
     }
 
-    sqlite3_stmt * pStmt = stmt->ptr;
     int count = sqlite3_bind_parameter_count(pStmt);
-    ScmObj result = SCM_NIL;
 
     /* parameter index start from 1 not 0 */
     for (int i = count; 0 < i; i--) {
 	const char * name = sqlite3_bind_parameter_name(pStmt, i);
-
+	    
 	if (name == NULL) {
 	    result = Scm_Cons(SCM_FALSE, result);
 	} else {
@@ -331,23 +329,29 @@ error:
     raiseError(errmsg);
 }
 
-void resetStmt(ScmSqliteStmt * stmt)
+void resetStmt(ScmSqliteStmt * stmt, int i)
 {
-    SCM_ASSERT(stmt->ptr != NULL);
+    SCM_ASSERT(0 <= i && i < stmt->ptrCount);
+
+    sqlite3_stmt * pStmt = stmt->pptr[i];
+
+    SCM_ASSERT(pStmt != NULL);
 
     /* this call does not reset binding parameter. */
-    sqlite3_reset(stmt->ptr);
+    sqlite3_reset(pStmt);
 
     /* Most recent sqlite3_step has an error, sqlite3_reset return error code. */
     /* But no need to check the result since return to initial state. */
 }
 
-void bindParameters(ScmSqliteStmt * stmt, ScmObj params)
+void bindParameters(ScmSqliteStmt * stmt, int i, ScmObj params)
 {
-    SCM_ASSERT(stmt->ptr != NULL);
-    SCM_ASSERT(SCM_LISTP(params));
+    SCM_ASSERT(0 <= i && i < stmt->ptrCount);
 
-    sqlite3_stmt * pStmt = stmt->ptr;
+    sqlite3_stmt * pStmt = stmt->pptr[i];
+
+    SCM_ASSERT(pStmt != NULL);
+    SCM_ASSERT(SCM_LISTP(params));
 
     /* Does not describe about return value. */
     sqlite3_clear_bindings(pStmt);
@@ -392,9 +396,12 @@ ScmObj readLastChanges(ScmSqliteStmt * stmt)
     return Scm_MakeInteger(changes);
 }
 
-ScmObj readResult(ScmSqliteStmt * stmt)
+ScmObj readResult(ScmSqliteStmt * stmt, int i)
 {
-    int result = sqlite3_step(stmt->ptr);
+    SCM_ASSERT(0 <= i && i < stmt->ptrCount);
+
+    sqlite3_stmt * pStmt = stmt->pptr[i];
+    int result = sqlite3_step(pStmt);
     ScmString * errmsg = NULL;
 
     switch (result)
@@ -408,7 +415,7 @@ ScmObj readResult(ScmSqliteStmt * stmt)
 	}
 	}
     case SQLITE_ROW:
-	return readRow(stmt->ptr);
+	return readRow(pStmt);
 	/* TODO busy test */
     /* case SQLITE_BUSY: */
     /* 	errmsg = dupErrorMessage("Database is busy."); */
@@ -431,13 +438,18 @@ error:
 
 void closeStmt(ScmSqliteStmt * stmt)
 {
-    if (stmt->db->ptr == NULL || stmt->ptr == NULL) {
+    if (stmt->db->ptr == NULL) {
 	return;
     }
 
-    sqlite3_finalize(stmt->ptr);
+    for (int i = 0; i++; i < stmt->ptrCount) {
+	if (stmt->pptr[i] == NULL)
+	    continue;
 
-    stmt->ptr = NULL;
+	sqlite3_finalize(stmt->pptr[i]);
+	stmt->pptr[i] = NULL;
+    }
+
     stmt->db = NULL;
 
     Scm_UnregisterFinalizer(SCM_OBJ(stmt));

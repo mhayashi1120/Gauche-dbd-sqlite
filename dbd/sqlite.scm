@@ -143,7 +143,7 @@
   ;; 2. sqlite3_step 1 time read EOF.
   ;; 3. again execute sqlite3_step seems to read from first (!).
   ;;  this make strange behavior as <sequence> .
-  (reset-stmt (get-handle r))
+  (reset-last-stmt (get-handle r))
 
   (let* ([result (step)])
     (proc
@@ -278,17 +278,9 @@
         (push-query! query)
         query)])))
 
-;; SELECT -> return <sqlite-result>
-;; Other DML -> Not defined in gauche info but UPDATE, DELETE, INSERT return integer
-;;  that hold affected row count. Should not use this extension if you need portable code.
-;; PARAMS: TODO keyword expand to bind parameter and others position parameter in the PARAMS.
-;;   e.g. TODO
-;; NOTE: No need to mixture index parameter and named parameter, but should work.
-(define-method dbi-execute-using-connection ((c <sqlite-connection>) (q <sqlite-query>)
-                                             (params <list>))
-
+(define (inner-execute stmt index query params)
   (define (canonicalize-parameters source-params)
-    (let ([sql-params (list-parameters (get-handle q))]
+    (let ([sql-params (list-parameters (get-handle query) index)]
           [val-alist (let loop ([ps source-params]
                                 [res '()]
                                 [i 1])
@@ -308,15 +300,40 @@
 
            ;; nameless parameter cannot check `strict-bind?`
            ;; e.g. "SELECT ?999" -> this malicious example generate many nameless parameters.
-           ;; `pass-through` query should use named parameter, so no need to check on this case.
+           ;; `pass-through` query should use named parameter, just avoid SEGV.
+           ;; So no need to check on this case.
            ]
           [else
            (or (assoc-ref val-alist name #f)
-               (and (~ q 'strict-bind?)
-                    (errorf <dbi-parameter-error> "Parameter ~s not found" name)))]))
+               (and (~ query'strict-bind?)
+                    (errorf <dbi-parameter-error> "Parameter ~s is not supplied." name)))]))
        sql-params)))
 
-  (define (ensure-prepare&params)
+  (define (ensure-params)
+    (cond
+     [(~ query'prepared) '()]
+     [else (canonicalize-parameters params)]))
+
+  (let1 real-params (ensure-params)
+    (match (execute-inner-stmt (get-handle query) real-params index)
+      [(or (? vector? result)
+           (? eof-object? result))
+       (make <sqlite-result>
+         :source-query query
+         :seed result)]
+      [result
+       result])))
+
+;; SELECT -> return <sqlite-result>
+;; Other DML -> Not defined in gauche info but UPDATE, DELETE, INSERT return integer
+;;  that hold affected row count. Should not use this extension if you need portable code.
+;; PARAMS: TODO keyword expand to bind parameter and others position parameter in the PARAMS.
+;;   e.g. TODO
+;; NOTE: No need to mixture index parameter and named parameter, but should work.
+(define-method dbi-execute-using-connection ((c <sqlite-connection>) (q <sqlite-query>)
+                                             (params <list>))
+
+  (define (ensure-stmt)
     (cond
      [(~ q'prepared)
       (let* ([prepared (~ q'prepared)]
@@ -324,19 +341,18 @@
              [sql (apply prepared params)]
              [stmt (prepare-stmt (get-handle c) sql flags)])
         (slot-set! q '%stmt-handle stmt)
-        params)]
+        stmt)]
      [else
-      (canonicalize-parameters params)]))
+      (get-handle q)]))
 
-  (let1 real-params (ensure-prepare&params)
-    (match (execute-stmt (get-handle q) real-params)
-      [(or (? vector? result)
-           (? eof-object? result))
-       (make <sqlite-result>
-         :source-query q
-         :seed result)]
-      [result
-       result])))
+  (let1 stmt (ensure-stmt)
+    (let loop ([index 0])
+      (let1 result (inner-execute stmt index q params)
+        (cond
+         [(< (+ index 1) (inner-stmt-count stmt))
+          (loop (+ index 1))]
+         [else
+          result])))))
 
 (define-method dbi-open? ((c <sqlite-connection>))
   (boolean (get-handle c)))

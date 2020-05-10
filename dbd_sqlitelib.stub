@@ -58,17 +58,20 @@
 (define-cproc prepare-stmt (db::<sqlite-db> query::<string> flags::<int>)
   (return (prepareStmt db query flags)))
 
-(define-cproc reset-stmt (stmt::<sqlite-stmt>) :: <void>
-  (resetStmt stmt))
+(define-cproc inner-stmt-count (stmt::<sqlite-stmt>) :: <int>
+  (return (-> stmt ptrCount)))
 
-(define-cproc list-parameters (stmt::<sqlite-stmt>)
-  (return (listParameters stmt)))
+(define-cproc reset-last-stmt (stmt::<sqlite-stmt>) :: <void>
+  (resetStmt stmt (- (-> stmt ptrCount) 1)))
+
+(define-cproc list-parameters (stmt::<sqlite-stmt> index::<int>)
+  (return (listParameters stmt index)))
 
 ;; return number | SELECT first result.
-(define-cproc execute-stmt (stmt::<sqlite-stmt> params::<list>)
-  (resetStmt stmt)
-  (bindParameters stmt params)
-  (return (readResult stmt)))
+(define-cproc execute-inner-stmt (stmt::<sqlite-stmt> params::<list> index::<int>)
+  (resetStmt stmt index)
+  (bindParameters stmt index params)
+  (return (readResult stmt index)))
 
 (define-cproc list-columns (stmt::<sqlite-stmt>)
   ;; Return pair
@@ -76,7 +79,7 @@
 
 ;; read SELECT result set.
 (define-cproc stmt-read-next (stmt::<sqlite-stmt>)
-  (return (readResult stmt)))
+  (return (readResult stmt (- (-> stmt ptrCount) 1))))
 
 (define-cproc close-stmt (stmt::<sqlite-stmt>) :: <void>
   (closeStmt stmt))

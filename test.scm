@@ -8,15 +8,13 @@
 (use dbd.sqlite)
 (test-module 'dbd.sqlite)
 
-(test* "get version with no error" #t
-       (sqlite-libversion)
-       (^ [_ x] (string? x)))
+(test* "get version with no error" (test-none-of (test-error))
+       (sqlite-libversion))
 
 (test-log "libsqlite Version: ~a" (sqlite-libversion))
 
-(test* "getversion with no error" #t
-       (sqlite-libversion-number)
-       (^ [_ x] (number? x)))
+(test* "getversion with no error" (test-none-of (test-error))
+       (sqlite-libversion-number))
 
 
 (use dbi)
@@ -63,10 +61,9 @@
          (dbi-prepare *connection* q)
          (^ [_ x] (class-of x))))
 
-(test* "Execute with no error" #t
-       (let ([q (dbi-prepare
-                 *connection*
-                 "CREATE TABLE hoge
+(let ([q (dbi-prepare
+          *connection*
+          "CREATE TABLE hoge
   (
    id INTEGER NOT NULL
  , name TEXT NOT NULL
@@ -75,8 +72,8 @@
  , value OBJECT
  , PRIMARY KEY (id)
   );")])
-         (dbi-execute q))
-       (^ [_ x] x #t))
+  (test* "Execute with no error" (test-none-of (test-error))
+         (dbi-execute q)))
 
 (use util.match)
 
@@ -322,6 +319,60 @@ SELECT id, name FROM hoge")
 (append-rowids! 108)
 
 ;;;
+;;; Complext multiple statements
+;;;
+
+(test-sql*
+ "Multiple pass-through query."
+ 1
+ (string-append
+  "INSERT INTO hoge (id, name, created) VALUES (:id, :name, :created); " ; executed but result is ignored
+  "SELECT * FROM hoge WHERE id >= 200 AND id < 300; " ;ignore
+  "UPDATE hoge SET name = :name2 WHERE id = :id ; " ; result is returned.
+  )
+ :id 200
+ :name "name200"
+ :created "2020-05-01"
+ :name2 "name200-2"
+ )
+(append-rowids! 200)
+
+(test-sql*
+ "Multiple pass-through query 2."
+ `(#(200 "name200-2") #(201 "name201-2"))
+ (string-append
+  "INSERT INTO hoge (id, name, created) VALUES (:id, :name, :created); " ; executed but result is ignored
+  "SELECT * FROM hoge WHERE id >= 200 AND id < 300; " ;ignore
+  "UPDATE hoge SET name = :name2 WHERE id = :id ; " ; execute but result is ignored.
+  "SELECT id, name FROM hoge WHERE id >= 200 AND id < 300; " ; return result contains after above update
+  )
+ :id 201
+ :name "name201"
+ :created "2020-05-10"
+ :name2 "name201-2"
+ )
+(append-rowids! 201)
+
+;; default bindings
+(test-sql
+ "Multiple query (text.sql)."
+ `(#(202 "name202-2"))
+ (string-append
+  "INSERT INTO hoge (id, name, created) VALUES (?, ?, ?); " ; executed but result is ignored
+  "SELECT * FROM hoge WHERE id = 202; "                     ;ignore
+  "UPDATE hoge SET name = ? WHERE id = ? ; " ; execute but result is ignored.
+  "SELECT id, name FROM hoge WHERE id = 202; " ; return result contains after above update
+  )
+ 202 "name202"
+ "2020-05-11"
+ "name202-2"
+ 202)
+(append-rowids! 202)
+
+;; TODO nameless param.
+
+
+;;;
 ;;; generator
 ;;;
 
@@ -433,6 +484,8 @@ SELECT id, name FROM hoge")
 ;; TODO other connect option
 ;; TODO check timeout behavior
 
+
+(remove-file *temp-sqlite*)
 
 ;; If you don't want `gosh' to exit with nonzero status even if
 ;; the test fails, pass #f to :exit-on-failure.
