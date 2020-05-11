@@ -29,7 +29,7 @@ typedef struct ScmSqliteStmtRec {
 	// This columns just hold last statement in SQL
 	ScmObj columns;
 	int ptrCount;
-	sqlite3_stmt ** pptr; /* NULL if closed */
+	sqlite3_stmt ** pptr; /* NULL if closed each element */
 } ScmSqliteStmt;
 
 SCM_CLASS_DECL(Scm_SqliteStmtClass);

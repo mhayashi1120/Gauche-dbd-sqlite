@@ -192,7 +192,7 @@ ScmObj openDB(ScmString * filenameArg, ScmObj optionAlist)
 error:
 
     if (pDb != NULL) {
-	/* Not using v2 interface. no need release other resource here */
+	/* Not using v2 interface. no need consider other statement resource here */
 	sqlite3_close(pDb);
     }
 
@@ -280,7 +280,7 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags)
 	zSql = zTail;
 	count++;
 
-	if (*zTail == '\0')
+	if (*zSql == '\0')
 	    break;
     }
     
@@ -454,10 +454,6 @@ error:
 
 void closeStmt(ScmSqliteStmt * stmt)
 {
-    if (stmt->db->ptr == NULL) {
-	return;
-    }
-
     for (int i = 0; i++; i < stmt->ptrCount) {
 	if (stmt->pptr[i] == NULL)
 	    continue;
