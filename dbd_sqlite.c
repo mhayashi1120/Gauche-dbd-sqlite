@@ -454,7 +454,7 @@ error:
 
 void closeStmt(ScmSqliteStmt * stmt)
 {
-    for (int i = 0; i++; i < stmt->ptrCount) {
+    for (int i = 0; i < stmt->ptrCount; i++) {
 	if (stmt->pptr[i] == NULL)
 	    continue;
 
