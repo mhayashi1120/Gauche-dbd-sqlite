@@ -276,34 +276,25 @@
         query)])))
 
 (define (inner-execute stmt index query params index-bias)
-  (define (canonicalize-parameters sql-params source-params)
-    (let ([val-alist (let loop ([ps source-params]
-                                [res '()]
-                                [i 0])
-                       (match ps
-                         ['()
-                          (reverse! res)]
-                         [((? keyword? k) v . rest)
-                          (loop rest (cons (cons (keyword->parameter k) v) res) (+ i 1))]
-                         [(v . rest)
-                          (loop rest (cons (cons i v) res) (+ i 1))]))])
-      (map-with-index
-       (^ [index name]
-         (cond
-          [(not name)
-           ;; "anonymous parameters" e.g. "SELECT ?, ?"
-           (assq-ref val-alist (+ index index-bias))
+  (define (canonicalize-parameters sql-params)
+    (map-with-index
+     (^ [index name]
+       (cond
+        [(not name)
+         ;; "anonymous parameters" e.g. "SELECT ?, ?"
+         (assq-ref params (+ index index-bias))
 
-           ;; nameless parameter cannot check `strict-bind?`
-           ;; e.g. "SELECT ?999" -> this malicious example generate many nameless parameters.
-           ;; `pass-through` query should use named parameter, just avoid SEGV.
-           ;; So no need to check on this case.
-           ]
-          [else
-           (or (assoc-ref val-alist name #f)
-               (and (~ query'strict-bind?)
-                    (errorf <dbi-parameter-error> "Parameter ~s is not supplied." name)))]))
-       sql-params)))
+         ;; nameless parameter cannot check `strict-bind?`
+         ;; e.g. "SELECT ?999" -> this malicious example generate many nameless parameters.
+         ;; `pass-through` query should use named parameter, just avoid SEGV.
+         ;; So no need to check on this case.
+         ]
+        [else
+         (or (assoc-ref params name #f)
+             (and (~ query'strict-bind?)
+                  (errorf <dbi-parameter-error>
+                          "Parameter ~s is not supplied." name)))]))
+     sql-params))
 
   (define (ensure-params)
     (cond
@@ -311,7 +302,7 @@
       (values '() 0)]
      [else
       (let1 sql-params (list-parameters (get-handle query) index)
-        (values (canonicalize-parameters sql-params params) (length sql-params)))]))
+        (values (canonicalize-parameters sql-params) (length sql-params)))]))
 
   (receive (real-params bias) (ensure-params)
     (match (execute-inner-stmt (get-handle query) real-params index)
@@ -344,10 +335,23 @@
      [else
       (get-handle q)]))
 
-  (let1 stmt (ensure-stmt)
+  (define (params->alist params)
+    (let loop ([ps params]
+               [res '()]
+               [i 0])
+      (match ps
+        ['()
+         (reverse! res)]
+        [((? keyword? k) v . rest)
+         (loop rest (cons (cons (keyword->parameter k) v) res) (+ i 1))]
+        [(v . rest)
+         (loop rest (cons (cons i v) res) (+ i 1))])))
+
+  (let* ([stmt (ensure-stmt)]
+         [alist (params->alist params)])
     (let loop ([index 0]
                [index-bias 0])
-      (receive (result bias) (inner-execute stmt index q params index-bias)
+      (receive (result bias) (inner-execute stmt index q alist index-bias)
         (cond
          [(< (+ index 1) (inner-stmt-count stmt))
           ;; Ignore result until last.

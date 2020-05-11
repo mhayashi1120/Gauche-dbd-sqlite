@@ -238,11 +238,14 @@ SELECT id, name FROM hoge")
 
 (test-sql*
  "Select binding parameter 2"
- `(#(100 "hoge" 10 "hoge" 100))
- "SELECT :id, $name, ?, ?002, ?001"
+ `(#(100 "hoge" 10 20 "hoge" 100))
+ "SELECT ?, ?; SELECT :id, $name, ?, ?004, ?002, ?001"
+ "no meaning1"
+ "no meaning2"
  :id 100
  :$name "hoge"
  10
+ :?004 20
  )
 
 
