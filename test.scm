@@ -159,8 +159,8 @@ SELECT id, name FROM hoge")
          (relation-rows (dbi-do *connection* "SELECT id FROM hoge WHERE id in (5,6,7)"))))
 
 (test* "Read multibyte string"
-       #("名前7")
-       (car (relation-rows (dbi-do *connection* "SELECT name FROM hoge WHERE id = 7"))))
+       `(#("名前7"))
+       (relation-rows (dbi-do *connection* "SELECT name FROM hoge WHERE id = 7")))
 
 (test-sql
  "Last empty statement is simply ignored"
@@ -395,13 +395,13 @@ SELECT id, name FROM hoge")
  `(#(202 "name202-2"))
  (string-append
   "INSERT INTO hoge (id, name, created) VALUES (?, ?, ?); " ; executed but result is ignored
-  "SELECT * FROM hoge WHERE id = 202; "                     ;ignore
+  "SELECT * FROM hoge WHERE id = ?; "                     ;ignore
   "UPDATE hoge SET name = ? WHERE id = ? ; " ; execute but result is ignored.
-  "SELECT id, name FROM hoge WHERE id = 202; " ; return result contains after above update
+  "SELECT id, name FROM hoge WHERE id = ?; " ; return result contains after above update
   )
- 202 "name202"
- "2020-05-11"
- "name202-2"
+ 202 "name202" "2020-05-11"
+ 202
+ "name202-2" 202
  202)
 (append-rowids! 202)
 
@@ -410,13 +410,13 @@ SELECT id, name FROM hoge")
  `(#(203 "name203-2"))
  (string-append
   "INSERT INTO hoge (id, name, created) VALUES (?, ?, ?); " ; executed but result is ignored
-  "SELECT * FROM hoge WHERE id = 203; "                     ;ignore
+  "SELECT * FROM hoge WHERE id = ?; "                     ;ignore
   "UPDATE hoge SET name = ? WHERE id = ? ; " ; execute but result is ignored.
-  "SELECT id, name FROM hoge WHERE id = 203; " ; return result contains after above update
+  "SELECT id, name FROM hoge WHERE id = ?; " ; return result contains after above update
   )
- 203 "name203"
- "2020-05-12"
- "name203-2"
+ 203 "name203" "2020-05-12"
+ 203
+ "name203-2" 203
  203)
 (append-rowids! 203)
 
@@ -527,7 +527,6 @@ SELECT id, name FROM hoge")
 (dbi-close *connection*)
 
 ;; TODO uri filename
-
 ;; TODO other connect option
 ;; TODO check timeout behavior
 
