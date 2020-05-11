@@ -236,6 +236,15 @@ SELECT id, name FROM hoge")
              8
              :last "LAST")
 
+(test-sql*
+ "Select binding parameter 2"
+ `(#(100 "hoge" 10 "hoge" 100))
+ "SELECT :id, $name, ?, ?002, ?001"
+ :id 100
+ :$name "hoge"
+ 10
+ )
+
 
 (let* ([q (dbi-prepare *connection* "SELECT :a" :pass-through #t :strict-bind #t)])
   
@@ -393,8 +402,20 @@ SELECT id, name FROM hoge")
  202)
 (append-rowids! 202)
 
-;; TODO nameless param.
-
+(test-sql*
+ "Multiple query pass-through nameless param."
+ `(#(203 "name203-2"))
+ (string-append
+  "INSERT INTO hoge (id, name, created) VALUES (?, ?, ?); " ; executed but result is ignored
+  "SELECT * FROM hoge WHERE id = 203; "                     ;ignore
+  "UPDATE hoge SET name = ? WHERE id = ? ; " ; execute but result is ignored.
+  "SELECT id, name FROM hoge WHERE id = 203; " ; return result contains after above update
+  )
+ 203 "name203"
+ "2020-05-12"
+ "name203-2"
+ 203)
+(append-rowids! 203)
 
 ;;;
 ;;; generator

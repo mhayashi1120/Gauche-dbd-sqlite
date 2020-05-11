@@ -275,12 +275,11 @@
         (push-query! query)
         query)])))
 
-(define (inner-execute stmt index query params)
-  (define (canonicalize-parameters source-params)
-    (let ([sql-params (list-parameters (get-handle query) index)]
-          [val-alist (let loop ([ps source-params]
+(define (inner-execute stmt index query params index-bias)
+  (define (canonicalize-parameters sql-params source-params)
+    (let ([val-alist (let loop ([ps source-params]
                                 [res '()]
-                                [i 1])
+                                [i 0])
                        (match ps
                          ['()
                           (reverse! res)]
@@ -293,7 +292,7 @@
          (cond
           [(not name)
            ;; "anonymous parameters" e.g. "SELECT ?, ?"
-           (assq-ref val-alist (+ index 1))
+           (assq-ref val-alist (+ index index-bias))
 
            ;; nameless parameter cannot check `strict-bind?`
            ;; e.g. "SELECT ?999" -> this malicious example generate many nameless parameters.
@@ -308,24 +307,27 @@
 
   (define (ensure-params)
     (cond
-     [(~ query'prepared) '()]
-     [else (canonicalize-parameters params)]))
+     [(~ query'prepared)
+      (values '() 0)]
+     [else
+      (let1 sql-params (list-parameters (get-handle query) index)
+        (values (canonicalize-parameters sql-params params) (length sql-params)))]))
 
-  (let1 real-params (ensure-params)
+  (receive (real-params bias) (ensure-params)
     (match (execute-inner-stmt (get-handle query) real-params index)
       [(or (? vector? result)
            (? eof-object? result))
-       (make <sqlite-result>
-         :source-query query
-         :seed result)]
+       (values (make <sqlite-result>
+                 :source-query query
+                 :seed result) bias)]
       [result
-       result])))
+       (values result bias)])))
 
 ;; SELECT -> return <sqlite-result>
 ;; Other DML -> Not defined in gauche info but UPDATE, DELETE, INSERT return integer
 ;;  that hold affected row count. Should not use this extension if you need portable code.
 ;; PARAMS: TODO keyword expand to bind parameter and others position parameter in the PARAMS.
-;;   e.g. TODO
+;;   e.g. TODO "SELECT :id, $name, ?001" query accept (:id 100 :$name "hoge" 10)
 ;; NOTE: No need to mixture index parameter and named parameter, but should work.
 (define-method dbi-execute-using-connection ((c <sqlite-connection>) (q <sqlite-query>)
                                              (params <list>))
@@ -343,11 +345,13 @@
       (get-handle q)]))
 
   (let1 stmt (ensure-stmt)
-    (let loop ([index 0])
-      (let1 result (inner-execute stmt index q params)
+    (let loop ([index 0]
+               [index-bias 0])
+      (receive (result bias) (inner-execute stmt index q params index-bias)
         (cond
          [(< (+ index 1) (inner-stmt-count stmt))
-          (loop (+ index 1))]
+          ;; Ignore result until last.
+          (loop (+ index 1) (+ index-bias bias))]
          [else
           result])))))
 
