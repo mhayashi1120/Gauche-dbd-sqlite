@@ -86,10 +86,10 @@ Gauche の Sqlite3 の binding を公開します。
 
 (dbi-connect "dbi:sqlite3:*filename*") -> (dbi-connect "dbi:sqlite:*filename*")
 
-長時間動くプログラムだとメモリリークしていた様子がありました。Finalize の処理がなかったためと思われます。
-Gauche の dbi interface に忠実に準拠しました。余計な機能も(ほぼ)入れませんでした。
-dbi-prepare の引数に parameter 変数を渡さないといけなかったはずですが、仕様に忠実に dbi-execute の parameter 引数として渡すようにしました。
-pass-through の named parameter はキーワード引数に対して :hoge-foo -> :hoge\_foo という変換を施します。
+- 長時間動くプログラムだとメモリリークしていた様子がありました。Finalize の処理がなかったためと思われます。
+- Gauche の dbi interface に忠実に準拠しました。余計な機能も(ほぼ)入れませんでした。
+- dbi-prepare の引数に parameter 変数を渡さないといけなかったはずですが、仕様に忠実に dbi-execute の parameter 引数として渡すようにしました。
+- pass-through の named parameter はキーワード引数に対して :hoge-foo -> :hoge\_foo という変換を施します。
 
 その他、細々とした違いはあるかもしれません。
 
