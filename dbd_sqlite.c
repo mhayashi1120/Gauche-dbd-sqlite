@@ -432,13 +432,6 @@ ScmObj readResult(ScmSqliteStmt * stmt, int i)
 	}
     case SQLITE_ROW:
 	return readRow(pStmt);
-	/* TODO busy test */
-    /* case SQLITE_BUSY: */
-    /* 	errmsg = dupErrorMessage("Database is busy."); */
-    /* 	goto error; */
-    /* case SQLITE_MISUSE: */
-    /* 	errmsg = dupErrorMessage("Statement is in misuse."); */
-    /* 	goto error; */
     default:
 	/* sqlite3_prepare_vX interface retrun many code. Handle sqlite3_errmsg */
 	errmsg = getErrorMessage(stmt->db->ptr);

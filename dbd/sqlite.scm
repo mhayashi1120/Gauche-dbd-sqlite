@@ -317,9 +317,8 @@
 ;; SELECT -> return <sqlite-result>
 ;; Other DML -> Not defined in gauche info but UPDATE, DELETE, INSERT return integer
 ;;  that hold affected row count. Should not use this extension if you need portable code.
-;; PARAMS: TODO keyword expand to bind parameter and others position parameter in the PARAMS.
-;;   e.g. TODO "SELECT :id, $name, ?001" query accept (:id 100 :$name "hoge" 10)
-;; NOTE: No need to mixture index parameter and named parameter, but should work.
+;; PARAMS: keyword expand to bind parameter and others position parameter in the list.
+;;   e.g. "SELECT :id, $name, ?" query accept (:id 100 :$name "hoge" 10)
 (define-method dbi-execute-using-connection ((c <sqlite-connection>) (q <sqlite-query>)
                                              (params <list>))
 

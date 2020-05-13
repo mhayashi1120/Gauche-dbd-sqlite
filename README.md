@@ -72,16 +72,9 @@ This module is newly created version of Gauche sqlite binding.
 ```
 
 
-## Ref
+## Comments
 
-https://www.sqlite.org/c3ref/funclist.html
-http://practical-scheme.net/gauche/
-https://github.com/kahua/Gauche-dbd-mysql
-
-## History
-
-TODO とりあえず書きはじめ。これ書いていくつかの TODO fix して、手許の既存スクリプトが動作したらとりあえず github に up する
-旧 repository はアーカイブに
+### 2020-05-13
 
 Gauche の Sqlite3 の binding を公開します。
 
@@ -100,6 +93,10 @@ pass-through の named parameter はキーワード引数に対して :hoge-foo 
 
 その他、細々とした違いはあるかもしれません。
 
+## Ref
 
+https://www.sqlite.org/c3ref/funclist.html
+http://practical-scheme.net/gauche/
+https://github.com/kahua/Gauche-dbd-mysql
 
 

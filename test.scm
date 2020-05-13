@@ -529,7 +529,7 @@ SELECT id, name FROM hoge")
 ;; TODO uri filename
 ;; TODO other connect option
 ;; TODO check timeout behavior
-
+;; TODO busy when sqlite3_step test
 
 (remove-file *temp-sqlite*)
 
