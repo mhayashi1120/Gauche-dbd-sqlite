@@ -2,13 +2,6 @@
 
 This module is newly created version of Gauche sqlite binding.
 
-## TODO
-
-
-can return number of update, insert, delete after execute https://www.sqlite.org/c3ref/changes.html
-bind-parameter accepts :hoge-foo -> :hoge\_foo 
-
-
 ## Samples
 
 ### Basic access
@@ -34,7 +27,7 @@ bind-parameter accepts :hoge-foo -> :hoge\_foo
 
 ```
 
-### Simplify match library & <sequence>
+### Simplify by match library and <sequence>
  
 
 ```
@@ -90,29 +83,23 @@ https://github.com/kahua/Gauche-dbd-mysql
 TODO とりあえず書きはじめ。これ書いていくつかの TODO fix して、手許の既存スクリプトが動作したらとりあえず github に up する
 旧 repository はアーカイブに
 
-This similar module exists here:
-https://github.com/mhayashi1120/Gauche-dbd-sqlite3/
+Gauche の Sqlite3 の binding を公開します。
 
-But have License problem 
+以前、[こちら](https://github.com/mhayashi1120/Gauche-dbd-sqlite3/) で公開していたのですが、[ライセンスの確認がとれない問題](https://github.com/mhayashi1120/Gauche-dbd-sqlite3/issues/1) があり、ゼロから作り直したいと思っていたものです。fork した際に **ライセンスをきちんと確認しなかったのは痛い失敗** でした。Gauche-dbd-sqlite3 のソースは読まない縛りで作り直し、ここ数年間まったく見ていません。
 
-https://github.com/mhayashi1120/Gauche-dbd-sqlite3/issues/1
+しばらくプログラミングから離れていたこともあり、最初に手をつけてから時間がかかりましたが、 git init 初期の頃からできるだけ小まめに commit しながら、自身 (mhayashi1120@gmail.com) がゼロから作った証跡として残しときます。
 
-ライセンスの確認がとれない問題があり、ゼロから作り直したいと思っていたものです。
-
-fork した際に **ライセンスをきちんと確認しなかったのは痛い失敗** でした。
-Gauche-dbd-sqlite3 のソースは読まない縛り。ここ数年間まったく見ていません。
-
-git init 初期の頃からできるだけ小まめに commit しながら、自身 (mhayashi1120@gmail.com) がゼロから作った証跡として残しときます。
-
-前の Gauche-dbd-sqlite3 との違い。
+前の Gauche-dbd-sqlite3 との違い、 bugfix など
 
 (dbi-connect "dbi:sqlite3:*filename*") -> (dbi-connect "dbi:sqlite:*filename*")
 
-長時間動くプログラムだとメモリリークしていた様子がある。Finalize の処理をしていなかったためと思われる。
-Gauche の dbi interface に忠実になった。
+長時間動くプログラムだとメモリリークしていた様子がありました。Finalize の処理がなかったためと思われます。
+Gauche の dbi interface に忠実に準拠しました。余計な機能も(ほぼ)入れませんでした。
+dbi-prepare の引数に parameter 変数を渡さないといけなかったはずですが、仕様に忠実に dbi-execute の parameter 引数として渡すようにしました。
+pass-through の named parameter はキーワード引数に対して :hoge-foo -> :hoge\_foo という変換を施します。
+
+その他、細々とした違いはあるかもしれません。
 
 
-旧バージョンのソースは見ていないので違いは不正確であること
 
 
-TODO readColumns return vector like mysql.scm
