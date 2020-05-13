@@ -95,8 +95,8 @@ Gauche の Sqlite3 の binding を公開します。
 
 ## Ref
 
-https://www.sqlite.org/c3ref/funclist.html
-http://practical-scheme.net/gauche/
-https://github.com/kahua/Gauche-dbd-mysql
+- https://www.sqlite.org/c3ref/funclist.html
+- http://practical-scheme.net/gauche/
+- https://github.com/kahua/Gauche-dbd-mysql
 
 
