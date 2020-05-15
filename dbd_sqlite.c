@@ -6,7 +6,7 @@
 
 #include <sqlite3.h>
 
-static sqlite3_stmt ** reallocStatements(sqlite3_stmt ** src, int currentLength, int nextLength)
+static sqlite3_stmt ** reallocStatements(sqlite3_stmt ** src, const int currentLength, const int nextLength)
 {
     sqlite3_stmt ** dest = SCM_NEW_ATOMIC_ARRAY(sqlite3_stmt*, nextLength);
 
@@ -17,7 +17,7 @@ static sqlite3_stmt ** reallocStatements(sqlite3_stmt ** src, int currentLength,
 
 static ScmObj readRow(sqlite3_stmt * pStmt)
 {
-    int col = sqlite3_column_count(pStmt);
+    const int col = sqlite3_column_count(pStmt);
 
     SCM_ASSERT(col > 0);
 
@@ -67,7 +67,7 @@ static ScmObj readRow(sqlite3_stmt * pStmt)
 
 static ScmObj readColumns(sqlite3_stmt * pStmt)
 {
-    int col = sqlite3_column_count(pStmt);
+    const int col = sqlite3_column_count(pStmt);
 
     if (col <= 0) {
 	return NULL;
@@ -120,16 +120,16 @@ static void raiseError(ScmString * msg)
 {
     ScmModule * mod = SCM_FIND_MODULE("dbd.sqlite", FALSE);
     ScmSymbol * errsym = SCM_SYMBOL(SCM_INTERN("<sqlite-error>"));
-    ScmObj condition = Scm_GlobalVariableRef(mod, errsym, FALSE);
+    const ScmObj condition = Scm_GlobalVariableRef(mod, errsym, FALSE);
 
     Scm_RaiseCondition(condition,
     		       SCM_RAISE_CONDITION_MESSAGE,
     		       Scm_GetStringConst(msg));
 }
 
-static ScmObj assocRefOption(const char * key, ScmObj optionAlist)
+static ScmObj assocRefOption(const char * key, const ScmObj optionAlist)
 {
-    ScmObj pair = Scm_Assoc(SCM_MAKE_STR_IMMUTABLE(key), optionAlist, SCM_CMP_EQUAL);
+    const ScmObj pair = Scm_Assoc(SCM_MAKE_STR_IMMUTABLE(key), optionAlist, SCM_CMP_EQUAL);
 
     if (!SCM_PAIRP(pair)) {
 	Scm_Error("Not found key.");
@@ -149,19 +149,19 @@ ScmObj getLibSqliteVersion()
     return SCM_MAKE_STR_IMMUTABLE(sqlite3_libversion());
 }
 
-ScmObj openDB(ScmString * filenameArg, ScmObj optionAlist)
+ScmObj openDB(ScmString * filenameArg, const ScmObj optionAlist)
 {
     const char * filename = Scm_GetStringConst(filenameArg);
     sqlite3 * pDb = NULL;
     ScmString * errmsg = NULL;
-    ScmObj flagsObj = assocRefOption("flags", optionAlist);
-    ScmObj vfsObj = assocRefOption("vfs", optionAlist);
-    ScmObj timeoutObj = assocRefOption("timeout", optionAlist);
+    const ScmObj flagsObj = assocRefOption("flags", optionAlist);
+    const ScmObj vfsObj = assocRefOption("vfs", optionAlist);
+    const ScmObj timeoutObj = assocRefOption("timeout", optionAlist);
     const int flags = Scm_GetInteger(flagsObj);
     const char * vfs = (SCM_FALSEP(vfsObj)) ? NULL : Scm_GetStringConst(SCM_STRING(vfsObj));
     const int timeoutMS = (SCM_FALSEP(timeoutObj)) ? -1 : Scm_GetInteger(timeoutObj);
     
-    int result = sqlite3_open_v2(
+    const int result = sqlite3_open_v2(
 	filename, &pDb,
 	flags,
 	vfs        /* Name of VFS module to use */
@@ -210,7 +210,7 @@ void closeDB(ScmSqliteDb * db)
 	return;
     }
 
-    int result = sqlite3_close_v2(db->ptr);
+    const int result = sqlite3_close_v2(db->ptr);
 
     if (result != SQLITE_OK) {
 	errmsg = getErrorMessage(db->ptr);
@@ -231,7 +231,7 @@ error:
     raiseError(errmsg);
 }
 
-ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags)
+ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, const int flags)
 {
     const char * zSql = Scm_GetStringConst(sql);
     unsigned int prepFlags = flags;
@@ -311,7 +311,7 @@ error:
 /* This function return list that contains ScmString with those prefix */
 /* e.g. "SELECT :hoge, @foo" sql -> (":hoge" "@foo")  */
 /* NOTE: edge case, Programmer can choose "SELECT ?999" as a parameter. */
-ScmObj listParameters(ScmSqliteStmt * stmt, int i)
+ScmObj listParameters(const ScmSqliteStmt * stmt, const int i)
 {
     ScmString * errmsg = NULL;
     sqlite3_stmt ** pStmts = stmt->pptr;
@@ -345,7 +345,7 @@ error:
     raiseError(errmsg);
 }
 
-void resetStmt(ScmSqliteStmt * stmt, int i)
+void resetStmt(ScmSqliteStmt * stmt, const int i)
 {
     SCM_ASSERT(0 <= i && i < stmt->ptrCount);
 
@@ -360,7 +360,7 @@ void resetStmt(ScmSqliteStmt * stmt, int i)
     /* But no need to check the result since return to initial state. */
 }
 
-void bindParameters(ScmSqliteStmt * stmt, int i, ScmObj params)
+void bindParameters(ScmSqliteStmt * stmt, const int i, const ScmObj params)
 {
     SCM_ASSERT(0 <= i && i < stmt->ptrCount);
 
@@ -369,14 +369,16 @@ void bindParameters(ScmSqliteStmt * stmt, int i, ScmObj params)
     SCM_ASSERT(pStmt != NULL);
     SCM_ASSERT(SCM_LISTP(params));
 
+    ScmObj ps = params;
+
     /* Does not describe about return value. */
     sqlite3_clear_bindings(pStmt);
 
-    ScmSize len = Scm_Length(params);
+    const ScmSize len = Scm_Length(ps);
 
     /* Bind parameter index start from 1 not 0 */
     for (int i = 1; i <= len; i++) {
-	ScmObj scmValue = SCM_CAR(params);
+	const ScmObj scmValue = SCM_CAR(ps);
 
 	if (SCM_STRINGP(scmValue)) {
 	    ScmSmallInt size;
@@ -401,23 +403,23 @@ void bindParameters(ScmSqliteStmt * stmt, int i, ScmObj params)
 	    raiseError(SCM_STRING(Scm_Sprintf("Not a supported type %S.", scmValue)));
 	}
 
-	params = SCM_CDR(params);
+	ps = SCM_CDR(ps);
     }
 }
 
 ScmObj readLastChanges(ScmSqliteStmt * stmt)
 {
-    int changes = sqlite3_changes(stmt->db->ptr);
+    const int changes = sqlite3_changes(stmt->db->ptr);
 
     return Scm_MakeInteger(changes);
 }
 
-ScmObj readResult(ScmSqliteStmt * stmt, int i)
+ScmObj readResult(ScmSqliteStmt * stmt, const int i)
 {
     SCM_ASSERT(0 <= i && i < stmt->ptrCount);
 
     sqlite3_stmt * pStmt = stmt->pptr[i];
-    int result = sqlite3_step(pStmt);
+    const int result = sqlite3_step(pStmt);
     ScmString * errmsg = NULL;
 
     switch (result)

@@ -41,15 +41,15 @@ extern ScmObj getLibSqliteVersion();
 
 extern ScmObj getLibSqliteVersionNumber();
 
-extern void bindParameters(ScmSqliteStmt * stmt, int i, ScmObj params);
-extern ScmObj openDB(ScmString * filenameArg, ScmObj optionAlist);
+extern void bindParameters(ScmSqliteStmt * stmt, const int i, const ScmObj params);
+extern ScmObj openDB(ScmString * filenameArg, const ScmObj optionAlist);
 extern void closeDB(ScmSqliteDb * db);
-extern ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, int flags);
-extern void resetStmt(ScmSqliteStmt * stmt, int i);
+extern ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, const int flags);
+extern void resetStmt(ScmSqliteStmt * stmt, const int i);
 extern void closeStmt(ScmSqliteStmt * stmt);
-extern ScmObj listParameters(ScmSqliteStmt * stmt, int i);
+extern ScmObj listParameters(const ScmSqliteStmt * stmt, const int i);
 extern ScmObj readLastChanges(ScmSqliteStmt * stmt);
-extern ScmObj readResult(ScmSqliteStmt * stmt, int i);
+extern ScmObj readResult(ScmSqliteStmt * stmt, const int i);
 
 /* Epilogue */
 SCM_DECL_END
