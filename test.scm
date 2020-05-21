@@ -49,7 +49,7 @@
 ;;; Basic construction
 ;;;
 
-(test-log "Basic construction.")
+(test-section "Basic construction.")
 
 (dolist (q `(""
              "SELECT 1"
@@ -86,7 +86,7 @@
     [x
      x]))
 
-(test-log "Basic prepared query (text.sql)")
+(test-section "Basic prepared query (text.sql)")
 
 (define (sql->result sql . params)
   (let* ([q (dbi-prepare *connection* sql)])
@@ -202,7 +202,7 @@ SELECT id, name FROM hoge")
 ;;; Pass through
 ;;;
 
-(test-log "pass-through query.")
+(test-section "pass-through query.")
 
 (define (sql->result* sql . params)
   (let* ([q (dbi-prepare *connection* sql :pass-through #t)])
@@ -258,7 +258,7 @@ SELECT id, name FROM hoge")
          (query->result q :a 1 :b 3))
   )
 
-(test-log "pass-through query")
+(test-section "pass-through query")
 (let ([update (dbi-prepare *connection* "UPDATE hoge SET value = :value WHERE id = :id " :pass-through #t)]
       [select (dbi-prepare *connection* "SELECT value FROM hoge WHERE id = :id " :pass-through #t)])
   (dolist (testcase `(("Positive max integer" #x7fffffffffffffff)
@@ -298,7 +298,7 @@ SELECT id, name FROM hoge")
                :value value
                :id 1))])))
 
-(test-log "Transaction test")
+(test-section "Transaction test")
 (sql->result "BEGIN;")
 (test-sql* "Insert in transaction"
            1
@@ -424,21 +424,33 @@ SELECT id, name FROM hoge")
 ;;; generator
 ;;;
 
-(test-log "Generator (cursor) test")
+(test-section "Generator (cursor) test")
 (use gauche.generator)
 
-(let* ([query (dbi-prepare *connection* "SELECT id FROM hoge ORDER BY id")]
-       [result (dbi-execute query)]
-       [gen (x->generator result)]
-       )
-  (test* "generator (like cursor) 1" #(1) (gen))
-  (test* "generator (like cursor) 2" #(2) (gen))
-  (test* "Map all results" (map (cut vector <>) *insert-rowids*) (relation-rows result))
-  (test* "Again Map all results" (map (cut vector <>) *insert-rowids*) (relation-rows result))
-  (dbi-close query)
-  (test* "query is closed" #f (dbi-open? query))
-  (dbi-close result)
-  (test* "Result is closed" #f (dbi-open? result)))
+(dolist (prepare-args
+         (list `()
+               `(:pass-through #t)))
+  (test-log "Generator test for prepare args ~s" prepare-args)
+  (let* ([query (apply dbi-prepare *connection* "SELECT id FROM hoge ORDER BY id" prepare-args)]
+         [result (dbi-execute query)]
+         [gen (x->generator result)]
+         )
+    (test* "generator (like cursor) 1" #(1) (gen))
+    (test* "generator (like cursor) 2" #(2) (gen))
+    (test* "Map all results" (map (cut vector <>) *insert-rowids*) (relation-rows result))
+    (test* "Again Map all results" (map (cut vector <>) *insert-rowids*) (relation-rows result))
+    (test* "generator (like cursor) 3 after map" #(3) (gen))
+    (dbi-close result)
+    (test* "Result is closed" #f (dbi-open? result))
+    (test* "Query is still opened" #t (dbi-open? query))
+    (let* ([result2 (dbi-execute query)]
+           [gen2 (x->generator result2)])
+      (test* "generator (like cursor) 2-1" #(1) (gen2))
+      (test* "Map all results 2" (map (cut vector <>) *insert-rowids*) (relation-rows result2))
+      (test* "generator (like cursor) 2-2" #(2) (gen2)))
+    (dbi-close query)
+    (test* "query is closed" #f (dbi-open? query))
+    ))
 
 ;;;
 ;;; SQL syntax error
@@ -468,7 +480,7 @@ SELECT id, name FROM hoge")
 ;;
 ;; memory sqlite
 ;;
-(test-log "In memory SQLite")
+(test-section "In memory SQLite")
 (set! *connection* (dbi-connect #"dbi:sqlite::memory:"))
 
 (dbi-do *connection* "CREATE TABLE hoge (id, name);")
@@ -486,7 +498,7 @@ SELECT id, name FROM hoge")
 ;; Connection is terminated
 ;;
 
-(test-log "close connection before commit.")
+(test-section "close connection before commit.")
 (set! *connection* (dbi-connect #"dbi:sqlite:~|*temp-sqlite*|;"))
 
 (dbi-do *connection* "BEGIN")
@@ -514,7 +526,7 @@ SELECT id, name FROM hoge")
 ;; Fullmutex
 ;;
 
-(test-log "fullmutex connection")
+(test-section "fullmutex connection")
 
 (use gauche.process)
 

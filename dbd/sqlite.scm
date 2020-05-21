@@ -387,5 +387,4 @@
 
 (define-method dbi-close ((r <sqlite-result>))
   (and-let1 q (~ r 'source-query)
-    (dbi-close q)
     (slot-set! r 'source-query #f)))
