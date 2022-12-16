@@ -180,13 +180,13 @@
                          (and-let1 opt (assoc-ref options-alist "optional-flags")
                            (sqlite-parse-number opt))
                          (logior
-                          (if-let1 opt (assoc-ref options-alist "memory")
+                          (if (assoc-ref options-alist "memory")
                             SQLITE_OPEN_MEMORY 0)
-                          (if-let1 opt (assoc-ref options-alist "sharedcache")
+                          (if (assoc-ref options-alist "sharedcache")
                             SQLITE_OPEN_SHAREDCACHE 0)
-                          (if-let1 opt (assoc-ref options-alist "uri")
+                          (if (assoc-ref options-alist "uri")
                             SQLITE_OPEN_URI 0)
-                          (if-let1 opt (assoc-ref options-alist "fullmutex")
+                          (if (assoc-ref options-alist "fullmutex")
                             SQLITE_OPEN_FULLMUTEX 0)
                           ))
                         )))
@@ -233,8 +233,8 @@
 ;; :pass-through : Boolean. This option just effect `pass-through` is #t
 ;; :flags : Bitwise Integer hold SQLITE_PREPARE_*
 ;; :persistent : Boolean value. If the statement would be alive long time.
-;; :strict-bind : Boolean. Binding parameter is not supplied, raise error when `dbi-execute`.
-;;     This is efficient when detect typo in SQL. And not report if extra parameter is supplied.
+;; :strict-bind : Boolean. Report error unless binding parameter when `dbi-execute`.
+;;     This is efficient to detect typo in SQL. And not report if extra parameter is supplied.
 (define-method dbi-prepare ((c <sqlite-connection>) (sql <string>)
                             . args)
   (define (push-query! q)
