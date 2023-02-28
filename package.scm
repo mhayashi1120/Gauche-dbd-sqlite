@@ -15,7 +15,9 @@
   ;; Example:
   ;;     :require (("Gauche" (>= "0.9.5"))  ; requires Gauche 0.9.5 or later
   ;;               ("Gauche-gl" "0.6"))     ; and Gauche-gl 0.6
-  :require ()
+  :require (
+            ("Gauche" (>= "0.9.11-p1"))
+            )
 
   ;; List of providing modules
   ;; NB: This will be recognized >= Gauche 0.9.7.
@@ -37,9 +39,7 @@
   ;; e.g. ("BSD")
   :licenses ("BSD")
 
-  ;; Homepage URL, if any.
-  ; :homepage "http://example.com/Gauche-dbd-sqlite/"
+  :homepage "https://github.com/mhayashi1120/Gauche-dbd-sqlite/"
 
-  ;; Repository URL, e.g. github
-  ; :repository "http://example.com/Gauche-dbd-sqlite.git"
+  :repository "https://github.com/mhayashi1120/Gauche-dbd-sqlite.git"
   )
