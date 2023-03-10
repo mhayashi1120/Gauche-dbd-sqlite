@@ -99,3 +99,8 @@ Gauche の Sqlite3 の binding を公開します。
 - https://github.com/kahua/Gauche-dbd-mysql
 
 
+# Docker
+
+```
+make docker-check
+```

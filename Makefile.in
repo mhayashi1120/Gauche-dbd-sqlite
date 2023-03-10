@@ -82,3 +82,6 @@ clean-sample:
 
 do-sample: clean-sample
 	$(GOSH) -I . -I$(srcdir) $(srcdir)/sample.scm
+
+docker-check :
+	./_docker/run-check.sh
