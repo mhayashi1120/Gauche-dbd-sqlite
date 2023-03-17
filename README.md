@@ -76,7 +76,7 @@ This module is newly created version of Gauche sqlite binding.
 
 ### 2023-03-10
 
-とりあえず勉強中の docker 環境での検証を用意しました。なお、sqlite4 に万一 upgrade された場合も追従する意志があります。
+とりあえず勉強中の docker 環境での検証を用意しました。なお、今後、万一 `sqlite4` に upgrade された場合もメンテナンスを続ける意志があります。
 
 ### 2020-05-13
 
