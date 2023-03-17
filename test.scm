@@ -22,7 +22,7 @@
 (define *sqlite-int-width*
   (let1 arch (gauche-config "--arch")
     (cond
-     [(#/i684/ arch) 32]
+     [(#/i686/ arch) 32]
      [(#/x86_64/ arch) 64]
      [else 64])))
 
