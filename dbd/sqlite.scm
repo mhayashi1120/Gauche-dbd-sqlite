@@ -58,7 +58,7 @@
 
 ;; Scheme Keyword -> SQL parameter conversion rule.
 ;; 1. keyword->string keyword.
-;; 2. sqlite parameter prefixes are ":" "$" "@" "?" . Unless start with it, prepend ":" 
+;; 2. sqlite parameter prefixes are ":" "$" "@" "?" . Unless start with it, prepend ":"
 ;; 3. Scheme name separator "-" -> "_" ( "-" is invalid name in SQL)
 (define (keyword->parameter k)
   (define (maybe-prepend p)
@@ -131,7 +131,7 @@
 (define-method call-with-iterator ((r <sqlite-result>) proc . option)
   (define (step)
     (stmt-read-next (get-handle r)))
-  
+
   (unless (dbi-open? r)
     (error <sqlite-error> "<sqlite-result> already closed:" r))
 
@@ -198,8 +198,8 @@
   ;; To read more details visit: https://www.sqlite.org/c3ref/open.html
   ;; e.g. (dbi-connect "dbi:sqlite:/path/to/sqlite.db;memory;sharedcache;")
   ;;  Integer accept hex ("0x"), octal ("0"), decimal notation. (e.g. "0x12", "022", "18")
-  ;; Supported options are: 
-  ;; file : Must be first option that has no value. 
+  ;; Supported options are:
+  ;; file : Must be first option that has no value.
   ;; "db" : same as file
   ;; "flags" : Flags integer. Pass to sqlite3_open_v2 as is.
   ;;     this override all of following flags.
@@ -254,7 +254,7 @@
                     ))
     (cond
      [pass-through
-      (let* (                          
+      (let* (
              [stmt (prepare-stmt (get-handle c) sql flags)]
              [query (make <sqlite-query>
                       :%stmt-handle stmt

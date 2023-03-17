@@ -27,7 +27,7 @@ static ScmObj readRow(sqlite3_stmt * pStmt)
 	switch (sqlite3_column_type(pStmt, i)) {
 	case SQLITE_INTEGER:
 	{
-	    ScmObj n = Scm_MakeInteger(sqlite3_column_int64(pStmt, i));
+	    ScmObj n = Scm_MakeInteger64(sqlite3_column_int64(pStmt, i));
 
 	    Scm_VectorSet(v, i, n);
 	    break;
@@ -160,7 +160,7 @@ ScmObj openDB(ScmString * filenameArg, const ScmObj optionAlist)
     const int flags = Scm_GetInteger(flagsObj);
     const char * vfs = (SCM_FALSEP(vfsObj)) ? NULL : Scm_GetStringConst(SCM_STRING(vfsObj));
     const int timeoutMS = (SCM_FALSEP(timeoutObj)) ? -1 : Scm_GetInteger(timeoutObj);
-    
+
     const int result = sqlite3_open_v2(
 	filename, &pDb,
 	flags,
@@ -283,7 +283,7 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, const int flags)
 	if (*zSql == '\0')
 	    break;
     }
-    
+
     ScmSqliteStmt * stmt = SCM_NEW(ScmSqliteStmt);
     SCM_SET_CLASS(stmt, SCM_CLASS_SQLITE_STMT);
 
@@ -328,7 +328,7 @@ ScmObj listParameters(const ScmSqliteStmt * stmt, const int i)
     /* parameter index start from 1 not 0 */
     for (int i = count; 0 < i; i--) {
 	const char * name = sqlite3_bind_parameter_name(pStmt, i);
-	    
+
 	if (name == NULL) {
 	    result = Scm_Cons(SCM_FALSE, result);
 	} else {
@@ -426,7 +426,7 @@ ScmObj readResult(ScmSqliteStmt * stmt, const int i)
     {
     case SQLITE_DONE:
 	{
-	if (stmt->columns != NULL) { 
+	if (stmt->columns != NULL) {
 	    return SCM_EOF;
 	} else {
 	    return readLastChanges(stmt);
