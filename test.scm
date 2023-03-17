@@ -16,6 +16,22 @@
 (test* "getversion with no error" (test-none-of (test-error))
        (sqlite-libversion-number))
 
+(use gauche.config)
+
+;; TODO just workaround fix to detect sqlite int width
+(define *sqlite-int-width*
+  (let1 arch (gauche-config "--arch")
+    (cond
+     [(#/i684/ arch) 32]
+     [(#/x86_64/ arch) 64]
+     [else 64])))
+
+(define (positive-limit width)
+  (- (ash 1 (- width 1)) 1))
+
+(define (negative-limit width)
+  (- (ash 1 (- width 1))))
+
 
 (use dbi)
 (use file.util)
@@ -250,7 +266,7 @@ SELECT id, name FROM hoge")
 
 
 (let* ([q (dbi-prepare *connection* "SELECT :a" :pass-through #t :strict-bind #t)])
-  
+
   (test* "Strict bind (No parameter supplied.)" (test-error <dbi-parameter-error>)
          (query->result q))
 
@@ -261,13 +277,13 @@ SELECT id, name FROM hoge")
 (test-section "pass-through query")
 (let ([update (dbi-prepare *connection* "UPDATE hoge SET value = :value WHERE id = :id " :pass-through #t)]
       [select (dbi-prepare *connection* "SELECT value FROM hoge WHERE id = :id " :pass-through #t)])
-  (dolist (testcase `(("Positive max integer" #x7fffffffffffffff)
-                      ("Negative max integer" #x-8000000000000000)
+  (dolist (testcase `(("Positive max integer" ,(positive-limit *sqlite-int-width*))
+                      ("Negative max integer" ,(negative-limit *sqlite-int-width*))
                       ("Float value" 4.0000000000000000001 :expected 4)
                       ("Float value" 4.1)
                       ("Zero" 0)
-                      (:error "Overflow long long (64bit integer)" #x8000000000000000)
-                      (:error "Overflow long long (64bit integer)" #x-8000000000000001)
+                      (:error "Overflow long long (64bit integer)" (+ (positive-limit 64) 1))
+                      (:error "Overflow long long (64bit integer)" (- (negative-limit 64) 1))
                       ("Large text" ,(make-string #xff #\a))
                       (:error "Unsupported type u16vec" #u16(1 256))
                       (:error "Unsupported type boolean" #t)
@@ -280,7 +296,7 @@ SELECT id, name FROM hoge")
          (test* #"~|name| UPDATE"
                 1
                 (query->result
-                 update 
+                 update
                  :value value
                  :id 1))
 
@@ -548,7 +564,3 @@ SELECT id, name FROM hoge")
 ;; If you don't want `gosh' to exit with nonzero status even if
 ;; the test fails, pass #f to :exit-on-failure.
 (test-end :exit-on-failure #t)
-
-
-
-
