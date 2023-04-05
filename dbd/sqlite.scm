@@ -219,7 +219,7 @@
         (match options-alist
           [((maybe-db . #t) . _)
            maybe-db]
-          [else
+          [_
            (assoc-ref options-alist "db" #f)])
       (let* ([options (make-options)]
              [db (open-db file options)])

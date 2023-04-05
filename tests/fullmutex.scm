@@ -15,5 +15,5 @@
   (match (cdr args)
     [(db)
      (test-fullmutex db)]
-    [else
+    [_
      (exit 1)]))
