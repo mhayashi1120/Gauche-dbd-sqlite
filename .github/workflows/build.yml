@@ -21,6 +21,6 @@ jobs:
       - uses: actions/checkout@v3
       - name: Setup package
         run: |
-          sudo apt install -y libsqlite3-dev;
+          apt install -y libsqlite3-dev;
       - name: CI
         run: ./run-ci.sh
