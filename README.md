@@ -1,5 +1,7 @@
 # Gauche-dbd-sqlite
 
+[![CI](https://github.com/mhayashi1120/Gauche-dbd-sqlite/actions/workflows/build.yml/badge.svg)](https://github.com/mhayashi1120/Gauche-dbd-sqlite/actions/workflows/build.yml)
+
 This module is newly created version of Gauche sqlite binding.
 
 ## Samples
