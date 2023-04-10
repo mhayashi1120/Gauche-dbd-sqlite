@@ -204,6 +204,9 @@ ScmObj openDB(ScmString * filenameArg, const ScmObj optionAlist)
         return SCM_FALSE;
 
     raiseError(errmsg);
+
+    // TODO just suppress warning
+    return SCM_FALSE;
 }
 
 void closeDB(ScmSqliteDb * db)
@@ -309,6 +312,9 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, const int flags)
     SCM_ASSERT(errmsg != NULL);
 
     raiseError(errmsg);
+
+    // TODO just suppress warning
+    return SCM_FALSE;
 }
 
 /* SQLite Parameter allow ":", "$", "@", "?" prefix  */
@@ -347,6 +353,9 @@ ScmObj listParameters(const ScmSqliteStmt * stmt, const int i)
     SCM_ASSERT(errmsg != NULL);
 
     raiseError(errmsg);
+
+    // TODO just suppress warning
+    return SCM_FALSE;
 }
 
 void resetStmt(ScmSqliteStmt * stmt, const int i)
@@ -449,6 +458,9 @@ ScmObj readResult(ScmSqliteStmt * stmt, const int i)
     SCM_ASSERT(errmsg != NULL);
 
     raiseError(errmsg);
+
+    // TODO just suppress warning
+    return SCM_FALSE;
 }
 
 void closeStmt(ScmSqliteStmt * stmt)
