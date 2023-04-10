@@ -2,6 +2,6 @@
 
 set -eu
 
-./configure
+./configure --enable-werror
 make check
 make do-sample

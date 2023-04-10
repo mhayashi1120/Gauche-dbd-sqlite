@@ -23,6 +23,7 @@ EXEEXT = @EXEEXT@
 LOCAL_PATHS = "@LOCAL_PATHS@"
 LIBS   = "@LIBS@"
 LDFLAGS = "@LDFLAGS@"
+CFLAGS = "@CFLAGS@"
 
 # Module-specific stuff
 PACKAGE   = Gauche-dbd-sqlite
