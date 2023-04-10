@@ -6,7 +6,7 @@
 
 #include <sqlite3.h>
 
-static sqlite3_stmt ** reallocStatements(sqlite3_stmt ** src, const int currentLength, const int nextLength)
+static sqlite3_stmt ** reallocStatements(sqlite3_stmt ** src, const int nextLength)
 {
     sqlite3_stmt ** dest = SCM_NEW_ATOMIC_ARRAY(sqlite3_stmt*, nextLength);
 
@@ -41,9 +41,9 @@ static ScmObj readRow(sqlite3_stmt * pStmt)
 	}
 	case SQLITE_TEXT:
 	{
-	    const char * text = sqlite3_column_text(pStmt, i);
+	    const unsigned char * text = sqlite3_column_text(pStmt, i);
 	    const int size = sqlite3_column_bytes(pStmt, i);
-	    const ScmObj str = Scm_MakeString(text, size, -1, SCM_STRING_COPYING);
+	    const ScmObj str = Scm_MakeString((char *)text, size, -1, SCM_STRING_COPYING);
 
 	    Scm_VectorSet(v, i, str);
 	    break;
@@ -84,14 +84,14 @@ static ScmObj readColumns(sqlite3_stmt * pStmt)
     return SCM_OBJ(result);
 }
 
-static void finalizeDBMaybe(ScmObj z, void *data)
+static void finalizeDBMaybe(ScmObj z, void * data)
 {
     ScmSqliteDb * db = SCM_SQLITE_DB(z);
 
     closeDB(db);
 }
 
-static void finalizeStmtMaybe(ScmObj z, void *data)
+static void finalizeStmtMaybe(ScmObj z, void * data)
 {
     ScmSqliteStmt * stmt = SCM_SQLITE_STMT(z);
 
@@ -270,7 +270,7 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, const int flags)
 
 	/* grow allocation */
 	if (maxCount <= count) {
-	    pStmts = reallocStatements(pStmts, maxCount, maxCount * 2);
+	    pStmts = reallocStatements(pStmts, maxCount * 2);
 	    maxCount = maxCount * 2;
 	}
 
@@ -293,7 +293,7 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, const int flags)
     stmt->db = db;
     /* Maybe shrink allocation */
     if (count < maxCount) {
-	pStmts = reallocStatements(pStmts, count, count);
+	pStmts = reallocStatements(pStmts, count);
     }
     stmt->pptr = pStmts;
     stmt->ptrCount = count;
