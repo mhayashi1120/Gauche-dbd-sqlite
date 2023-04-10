@@ -84,15 +84,19 @@ static ScmObj readColumns(sqlite3_stmt * pStmt)
     return SCM_OBJ(result);
 }
 
-static void finalizeDBMaybe(ScmObj z, void * data)
+static void finalizeDBMaybe(ScmObj z, void * _data)
 {
+    (void)_data;
+
     ScmSqliteDb * db = SCM_SQLITE_DB(z);
 
     closeDB(db);
 }
 
-static void finalizeStmtMaybe(ScmObj z, void * data)
+static void finalizeStmtMaybe(ScmObj z, void * _data)
 {
+    (void)_data;
+
     ScmSqliteStmt * stmt = SCM_SQLITE_STMT(z);
 
     closeStmt(stmt);
