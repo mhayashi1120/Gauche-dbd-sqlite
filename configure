@@ -16,7 +16,9 @@
 ;; cf-init-gauche-extension.
 (cf-arg-with
  'sqlite3
- "  --with-sqlite3=PATH      Use SQLite3 devkit installed under PATH."
+ "  \
+  --with-sqlite3=PATH     Use SQLite3 devkit installed under PATH.
+"
  )
 
 (cf-arg-enable
@@ -40,9 +42,13 @@
            [(equal? werror "yes")])
   (cf-subst-append 'CFLAGS "-Werror"))
 
-(cf-check-lib
- "sqlite3" "sqlite3_libversion"
- :if-not-found required-lib-not-found)
+(cond
+ [(cf-package-ref 'sqlite3) =>
+  (^p (cf-subst-prepend 'LIBS #"-l~|p|"))]
+ [else
+  (cf-check-lib
+   "sqlite3" "sqlite3_libversion"
+   :if-not-found required-lib-not-found)])
 
 ;; Output
 (cf-output-default)

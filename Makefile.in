@@ -52,6 +52,7 @@ dbd_sqlite.$(SOEXT): $(dbd_sqlite_SRCS) $(dbd_sqlite_HDRS)
 	$(GAUCHE_PACKAGE) compile \
 	  --ldflags=$(LDFLAGS) \
 	  --libs=$(LIBS) \
+	  --cflags=$(CFLAGS) \
 	  --local=$(LOCAL_PATHS) --verbose dbd_sqlite $(dbd_sqlite_SRCS)
 
 check : all
