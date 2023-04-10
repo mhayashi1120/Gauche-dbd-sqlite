@@ -14,8 +14,8 @@
 SCM_DECL_BEGIN
 
 typedef struct ScmSqliteDbRec {
-	SCM_HEADER;
-	sqlite3 *ptr; /* NULL if closed */
+    SCM_HEADER;
+    sqlite3 *ptr; /* NULL if closed */
 } ScmSqliteDb;
 
 SCM_CLASS_DECL(Scm_SqliteDbClass);
@@ -24,12 +24,12 @@ SCM_CLASS_DECL(Scm_SqliteDbClass);
 #define SCM_SQLITE_DB_P(obj) (SCM_XTYPEP(obj, SCM_CLASS_SQLITE_DB))
 
 typedef struct ScmSqliteStmtRec {
-	SCM_HEADER;
-	ScmSqliteDb * db;
-	// This columns just hold last statement in SQL
-	ScmObj columns;
-	int ptrCount;
-	sqlite3_stmt ** pptr; /* NULL if closed each element */
+    SCM_HEADER;
+    ScmSqliteDb * db;
+    // This columns just hold last statement in SQL
+    ScmObj columns;
+    int ptrCount;
+    sqlite3_stmt ** pptr; /* NULL if closed each element */
 } ScmSqliteStmt;
 
 SCM_CLASS_DECL(Scm_SqliteStmtClass);

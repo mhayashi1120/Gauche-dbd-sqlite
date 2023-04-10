@@ -24,42 +24,42 @@ static ScmObj readRow(sqlite3_stmt * pStmt)
     ScmVector * v = SCM_VECTOR(Scm_MakeVector(col, SCM_FALSE));
 
     for (int i = 0; i < col; i++) {
-	switch (sqlite3_column_type(pStmt, i)) {
-	case SQLITE_INTEGER:
-	{
-	    ScmObj n = Scm_MakeInteger64(sqlite3_column_int64(pStmt, i));
+        switch (sqlite3_column_type(pStmt, i)) {
+        case SQLITE_INTEGER:
+        {
+            ScmObj n = Scm_MakeInteger64(sqlite3_column_int64(pStmt, i));
 
-	    Scm_VectorSet(v, i, n);
-	    break;
-	}
-	case SQLITE_FLOAT:
-	{
-	    ScmObj f = Scm_MakeFlonum(sqlite3_column_double(pStmt, i));
+            Scm_VectorSet(v, i, n);
+            break;
+        }
+        case SQLITE_FLOAT:
+        {
+            ScmObj f = Scm_MakeFlonum(sqlite3_column_double(pStmt, i));
 
-	    Scm_VectorSet(v, i, f);
-	    break;
-	}
-	case SQLITE_TEXT:
-	{
-	    const unsigned char * text = sqlite3_column_text(pStmt, i);
-	    const int size = sqlite3_column_bytes(pStmt, i);
-	    const ScmObj str = Scm_MakeString((char *)text, size, -1, SCM_STRING_COPYING);
+            Scm_VectorSet(v, i, f);
+            break;
+        }
+        case SQLITE_TEXT:
+        {
+            const unsigned char * text = sqlite3_column_text(pStmt, i);
+            const int size = sqlite3_column_bytes(pStmt, i);
+            const ScmObj str = Scm_MakeString((char *)text, size, -1, SCM_STRING_COPYING);
 
-	    Scm_VectorSet(v, i, str);
-	    break;
-	}
-	case SQLITE_BLOB:
-	{
-	    const unsigned char * blob = sqlite3_column_blob(pStmt, i);
-	    const int size = sqlite3_column_bytes(pStmt, i);
-	    const ScmObj u8vec = Scm_MakeU8VectorFromArray(size, blob);
+            Scm_VectorSet(v, i, str);
+            break;
+        }
+        case SQLITE_BLOB:
+        {
+            const unsigned char * blob = sqlite3_column_blob(pStmt, i);
+            const int size = sqlite3_column_bytes(pStmt, i);
+            const ScmObj u8vec = Scm_MakeU8VectorFromArray(size, blob);
 
-	    Scm_VectorSet(v, i, u8vec);
-	    break;
-	}
-	case SQLITE_NULL:
-	    break;
-	}
+            Scm_VectorSet(v, i, u8vec);
+            break;
+        }
+        case SQLITE_NULL:
+            break;
+        }
     }
 
     return SCM_OBJ(v);
@@ -70,15 +70,15 @@ static ScmObj readColumns(sqlite3_stmt * pStmt)
     const int col = sqlite3_column_count(pStmt);
 
     if (col <= 0) {
-	return NULL;
+        return NULL;
     }
 
     ScmVector * result = SCM_VECTOR(Scm_MakeVector(col, SCM_FALSE));
 
     for (int i = 0; i < col; i++) {
-	const char * name = sqlite3_column_name(pStmt, i);
+        const char * name = sqlite3_column_name(pStmt, i);
 
-	Scm_VectorSet(result, i, SCM_MAKE_STR_COPYING(name));
+        Scm_VectorSet(result, i, SCM_MAKE_STR_COPYING(name));
     }
 
     return SCM_OBJ(result);
@@ -111,7 +111,7 @@ static ScmString * getErrorMessage(sqlite3 * pDb)
     const char * msg = sqlite3_errmsg(pDb);
 
     if (msg == NULL)
-	return NULL;
+        return NULL;
 
     return dupErrorMessage(msg);
 }
@@ -123,8 +123,8 @@ static void raiseError(ScmString * msg)
     const ScmObj condition = Scm_GlobalVariableRef(mod, errsym, FALSE);
 
     Scm_RaiseCondition(condition,
-    		       SCM_RAISE_CONDITION_MESSAGE,
-    		       Scm_GetStringConst(msg));
+                       SCM_RAISE_CONDITION_MESSAGE,
+                       Scm_GetStringConst(msg));
 }
 
 static ScmObj assocRefOption(const char * key, const ScmObj optionAlist)
@@ -132,7 +132,7 @@ static ScmObj assocRefOption(const char * key, const ScmObj optionAlist)
     const ScmObj pair = Scm_Assoc(SCM_MAKE_STR_IMMUTABLE(key), optionAlist, SCM_CMP_EQUAL);
 
     if (!SCM_PAIRP(pair)) {
-	Scm_Error("Not found key.");
+        Scm_Error("Not found key.");
     }
 
     return SCM_CDR(pair);
@@ -162,22 +162,22 @@ ScmObj openDB(ScmString * filenameArg, const ScmObj optionAlist)
     const int timeoutMS = (SCM_FALSEP(timeoutObj)) ? -1 : Scm_GetInteger(timeoutObj);
 
     const int result = sqlite3_open_v2(
-	filename, &pDb,
-	flags,
-	vfs        /* Name of VFS module to use */
-	);
+        filename, &pDb,
+        flags,
+        vfs        /* Name of VFS module to use */
+        );
 
     if (result != SQLITE_OK) {
-	if (pDb != NULL) {
-	    errmsg = getErrorMessage(pDb);
-	} else {
-	    errmsg = dupErrorMessage("Unknown error while opening DB.");
-	}
-	goto error;
+        if (pDb != NULL) {
+            errmsg = getErrorMessage(pDb);
+        } else {
+            errmsg = dupErrorMessage("Unknown error while opening DB.");
+        }
+        goto error;
     }
 
     if (0 <= timeoutMS) {
-	sqlite3_busy_timeout(pDb, timeoutMS);
+        sqlite3_busy_timeout(pDb, timeoutMS);
     }
 
     ScmSqliteDb * db = SCM_NEW(ScmSqliteDb);
@@ -189,15 +189,15 @@ ScmObj openDB(ScmString * filenameArg, const ScmObj optionAlist)
 
     return SCM_OBJ(db);
 
-error:
+ error:
 
     if (pDb != NULL) {
-	/* Not using v2 interface. no need consider other statement resource here */
-	sqlite3_close(pDb);
+        /* Not using v2 interface. no need consider other statement resource here */
+        sqlite3_close(pDb);
     }
 
     if (errmsg == NULL)
-	return SCM_FALSE;
+        return SCM_FALSE;
 
     raiseError(errmsg);
 }
@@ -207,14 +207,14 @@ void closeDB(ScmSqliteDb * db)
     ScmString * errmsg = NULL;
 
     if (db->ptr == NULL) {
-	return;
+        return;
     }
 
     const int result = sqlite3_close_v2(db->ptr);
 
     if (result != SQLITE_OK) {
-	errmsg = getErrorMessage(db->ptr);
-	goto error;
+        errmsg = getErrorMessage(db->ptr);
+        goto error;
     }
 
     db->ptr = NULL;
@@ -223,10 +223,10 @@ void closeDB(ScmSqliteDb * db)
 
     return;
 
-error:
+ error:
 
     if (errmsg == NULL)
-	return;
+        return;
 
     raiseError(errmsg);
 }
@@ -244,44 +244,44 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, const int flags)
     int maxCount = 4;
 
     if (db->ptr == NULL) {
-	errmsg = dupErrorMessage("Database has been closed.");
-	goto error;
+        errmsg = dupErrorMessage("Database has been closed.");
+        goto error;
     }
 
     pStmts = SCM_NEW_ATOMIC_ARRAY(sqlite3_stmt*, maxCount);
 
     while (1) {
-	int result = sqlite3_prepare_v3(
-	    db->ptr, zSql, -1,
-	    /* Zero or more SQLITE_PREPARE_* flags */
-	    prepFlags,
-	    &pStmt, &zTail
-	    );
+        int result = sqlite3_prepare_v3(
+            db->ptr, zSql, -1,
+            /* Zero or more SQLITE_PREPARE_* flags */
+            prepFlags,
+            &pStmt, &zTail
+            );
 
-	if (result != SQLITE_OK) {
-	    errmsg = getErrorMessage(db->ptr);
-	    goto error;
-	}
+        if (result != SQLITE_OK) {
+            errmsg = getErrorMessage(db->ptr);
+            goto error;
+        }
 
-	if (pStmt == NULL)
-	    break;
+        if (pStmt == NULL)
+            break;
 
-	SCM_ASSERT(zTail != zSql);
+        SCM_ASSERT(zTail != zSql);
 
-	/* grow allocation */
-	if (maxCount <= count) {
-	    pStmts = reallocStatements(pStmts, maxCount * 2);
-	    maxCount = maxCount * 2;
-	}
+        /* grow allocation */
+        if (maxCount <= count) {
+            pStmts = reallocStatements(pStmts, maxCount * 2);
+            maxCount = maxCount * 2;
+        }
 
-	pStmts[count] = pStmt;
-	pLastStmt = pStmt;
-	pStmt = NULL;
-	zSql = zTail;
-	count++;
+        pStmts[count] = pStmt;
+        pLastStmt = pStmt;
+        pStmt = NULL;
+        zSql = zTail;
+        count++;
 
-	if (*zSql == '\0')
-	    break;
+        if (*zSql == '\0')
+            break;
     }
 
     ScmSqliteStmt * stmt = SCM_NEW(ScmSqliteStmt);
@@ -293,14 +293,14 @@ ScmObj prepareStmt(ScmSqliteDb * db, ScmString * sql, const int flags)
     stmt->db = db;
     /* Maybe shrink allocation */
     if (count < maxCount) {
-	pStmts = reallocStatements(pStmts, count);
+        pStmts = reallocStatements(pStmts, count);
     }
     stmt->pptr = pStmts;
     stmt->ptrCount = count;
 
     return SCM_OBJ(stmt);
 
-error:
+ error:
 
     SCM_ASSERT(errmsg != NULL);
 
@@ -319,26 +319,26 @@ ScmObj listParameters(const ScmSqliteStmt * stmt, const int i)
     sqlite3_stmt * pStmt = pStmts[i];
 
     if (pStmt == NULL) {
-	errmsg = dupErrorMessage("Statement has been closed.");
-	goto error;
+        errmsg = dupErrorMessage("Statement has been closed.");
+        goto error;
     }
 
     int count = sqlite3_bind_parameter_count(pStmt);
 
     /* parameter index start from 1 not 0 */
     for (int i = count; 0 < i; i--) {
-	const char * name = sqlite3_bind_parameter_name(pStmt, i);
+        const char * name = sqlite3_bind_parameter_name(pStmt, i);
 
-	if (name == NULL) {
-	    result = Scm_Cons(SCM_FALSE, result);
-	} else {
-	    result = Scm_Cons(SCM_MAKE_STR_COPYING(name), result);
-	}
+        if (name == NULL) {
+            result = Scm_Cons(SCM_FALSE, result);
+        } else {
+            result = Scm_Cons(SCM_MAKE_STR_COPYING(name), result);
+        }
     }
 
     return result;
 
-error:
+ error:
 
     SCM_ASSERT(errmsg != NULL);
 
@@ -378,32 +378,32 @@ void bindParameters(ScmSqliteStmt * stmt, const int i, const ScmObj params)
 
     /* Bind parameter index start from 1 not 0 */
     for (int i = 1; i <= len; i++) {
-	const ScmObj scmValue = SCM_CAR(ps);
+        const ScmObj scmValue = SCM_CAR(ps);
 
-	if (SCM_STRINGP(scmValue)) {
-	    ScmSmallInt size;
-	    const char * text = Scm_GetStringContent(SCM_STRING(scmValue), &size, NULL, NULL);
+        if (SCM_STRINGP(scmValue)) {
+            ScmSmallInt size;
+            const char * text = Scm_GetStringContent(SCM_STRING(scmValue), &size, NULL, NULL);
 
-	    sqlite3_bind_text(pStmt, i, text, size, NULL);
-	} else if (SCM_INTEGERP(scmValue)) {
-	    sqlite3_int64 ll = Scm_GetInteger64(scmValue);
-	    sqlite3_bind_int64(pStmt, i, ll);
-	} else if (SCM_FLONUMP(scmValue)) {
-	    const double f = Scm_GetDouble(scmValue);
+            sqlite3_bind_text(pStmt, i, text, size, NULL);
+        } else if (SCM_INTEGERP(scmValue)) {
+            sqlite3_int64 ll = Scm_GetInteger64(scmValue);
+            sqlite3_bind_int64(pStmt, i, ll);
+        } else if (SCM_FLONUMP(scmValue)) {
+            const double f = Scm_GetDouble(scmValue);
 
-	    sqlite3_bind_double(pStmt, i, f);
-	} else if (SCM_UVECTORP(scmValue) && SCM_UVECTOR_SUBTYPE_P(scmValue, SCM_UVECTOR_U8)) {
-	    const int size = SCM_UVECTOR_SIZE(scmValue);
-	    const unsigned char * blob = SCM_UVECTOR_ELEMENTS(scmValue);
+            sqlite3_bind_double(pStmt, i, f);
+        } else if (SCM_UVECTORP(scmValue) && SCM_UVECTOR_SUBTYPE_P(scmValue, SCM_UVECTOR_U8)) {
+            const int size = SCM_UVECTOR_SIZE(scmValue);
+            const unsigned char * blob = SCM_UVECTOR_ELEMENTS(scmValue);
 
-	    sqlite3_bind_blob(pStmt, i, blob, size, NULL);
-	} else if (SCM_FALSEP(scmValue)) {
-	    sqlite3_bind_null(pStmt, i);
-	} else {
-	    raiseError(SCM_STRING(Scm_Sprintf("Not a supported type %S.", scmValue)));
-	}
+            sqlite3_bind_blob(pStmt, i, blob, size, NULL);
+        } else if (SCM_FALSEP(scmValue)) {
+            sqlite3_bind_null(pStmt, i);
+        } else {
+            raiseError(SCM_STRING(Scm_Sprintf("Not a supported type %S.", scmValue)));
+        }
 
-	ps = SCM_CDR(ps);
+        ps = SCM_CDR(ps);
     }
 }
 
@@ -425,22 +425,22 @@ ScmObj readResult(ScmSqliteStmt * stmt, const int i)
     switch (result)
     {
     case SQLITE_DONE:
-	{
-	if (stmt->columns != NULL) {
-	    return SCM_EOF;
-	} else {
-	    return readLastChanges(stmt);
-	}
-	}
+    {
+        if (stmt->columns != NULL) {
+            return SCM_EOF;
+        } else {
+            return readLastChanges(stmt);
+        }
+    }
     case SQLITE_ROW:
-	return readRow(pStmt);
+        return readRow(pStmt);
     default:
-	/* sqlite3_prepare_vX interface retrun many code. Handle sqlite3_errmsg */
-	errmsg = getErrorMessage(stmt->db->ptr);
-	goto error;
+        /* sqlite3_prepare_vX interface retrun many code. Handle sqlite3_errmsg */
+        errmsg = getErrorMessage(stmt->db->ptr);
+        goto error;
     }
 
-error:
+ error:
 
     SCM_ASSERT(errmsg != NULL);
 
@@ -450,11 +450,11 @@ error:
 void closeStmt(ScmSqliteStmt * stmt)
 {
     for (int i = 0; i < stmt->ptrCount; i++) {
-	if (stmt->pptr[i] == NULL)
-	    continue;
+        if (stmt->pptr[i] == NULL)
+            continue;
 
-	sqlite3_finalize(stmt->pptr[i]);
-	stmt->pptr[i] = NULL;
+        sqlite3_finalize(stmt->pptr[i]);
+        stmt->pptr[i] = NULL;
     }
 
     stmt->db = NULL;
