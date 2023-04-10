@@ -43,6 +43,8 @@ GAUCHE_PKGARCHDIR = "$(DESTDIR)@GAUCHE_PKGARCHDIR@"
 dbd_sqlite_SRCS = $(srcdir)/dbd_sqlite.c $(srcdir)/dbd_sqlitelib.stub
 dbd_sqlite_HDRS = $(srcdir)/dbd_sqlite.h
 
+LOCAL_GOSH = $(GOSH) -I$(srcdir)
+
 all : $(TARGET)
 
 dbd_sqlite.$(SOEXT): $(dbd_sqlite_SRCS) $(dbd_sqlite_HDRS)
@@ -53,7 +55,7 @@ dbd_sqlite.$(SOEXT): $(dbd_sqlite_SRCS) $(dbd_sqlite_HDRS)
 
 check : all
 	@rm -f test.log
-	$(GOSH) -I. -I$(srcdir) $(srcdir)/test.scm > test.log
+	$(LOCAL_GOSH) $(srcdir)/test.scm > test.log
 
 install : all
 	$(INSTALL) -m 444 -T $(GAUCHE_PKGINCDIR) $(HEADERS)
@@ -81,7 +83,7 @@ clean-sample:
 	rm -f sample.sqlite
 
 do-sample: clean-sample
-	$(GOSH) -I . -I$(srcdir) $(srcdir)/sample.scm
+	$(LOCAL_GOSH) $(srcdir)/sample.scm
 
 docker-check :
 	./_docker/run-check.sh
