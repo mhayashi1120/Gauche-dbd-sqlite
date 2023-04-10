@@ -3,12 +3,12 @@
 ;;
 
 (define-gauche-package "Gauche-dbd-sqlite"
-  ;; 
-  :version "0.5.18"
+  ;;
+  :version "0.6.0"
 
   ;; Description of the package.  The first line is used as a short
   ;; summary.
-  :description "Sqlite library for Gauche\n\
+  :description "SQLite library for Gauche\n\
                 Previous Gauche-dbd-sqlite3 is purged cause of license problem."
 
   ;; List of dependencies.
@@ -16,15 +16,17 @@
   ;;     :require (("Gauche" (>= "0.9.5"))  ; requires Gauche 0.9.5 or later
   ;;               ("Gauche-gl" "0.6"))     ; and Gauche-gl 0.6
   :require (
-            ("Gauche" (>= "0.9.11-p1"))
+            ("Gauche" (>= "0.9.12"))
             )
 
   ;; List of providing modules
   ;; NB: This will be recognized >= Gauche 0.9.7.
   ;; Example:
   ;;      :providing-modules (util.algorithm1 util.algorithm1.option)
-  :providing-modules ()
-  
+  :providing-modules (
+                      dbd.sqlite
+                      )
+
   ;; List name and contact info of authors.
   ;; e.g. ("Eva Lu Ator <eval@example.com>"
   ;;       "Alyssa P. Hacker <lisper@example.com>")

@@ -2,35 +2,36 @@
 ;; Configuring Gauche-dbd-sqlite
 ;; Run ./configure (or gosh ./configure) to generate Makefiles.
 
-(use gauche.mop.singleton)
 (use gauche.configure)
 
-(define (required-lib-not-found libname)
-  (format #t "~a not found.\n" libname)
-  (exit 1))
+(load "configure-compat"
+      :paths `(,(sys-dirname (current-load-path)))
+      :error-if-not-found #f)
+
+(define (errmsg fmt . args)
+  (apply format (current-error-port) fmt args))
 
 ;; Here you can define handlers of configure arguments by cf-arg-enable
 ;; and cf-arg-with.  Note that --with-local is handled implicitly if you use
 ;; cf-init-gauche-extension.
 (cf-arg-with
- 'libssl
- "  --with-sqlite3=PATH      Use Sqlite devkit installed under PATH."
- (^x (cf-subst-prepend 'LDFLAGS x)))
+ 'sqlite3
+ "  --with-sqlite3=PATH      Use SQLite3 devkit installed under PATH."
+ )
 
 ;; Initialize configure.  This creates the global context, parses
 ;; command-line args and sets up default values.
 (cf-init-gauche-extension)
 
 ;; Here you can add feature tests and other cf-define's.
-(cf-lang (instance-of <c-language>))
 
-(cf-subst 'LIBS "")
-(cf-subst 'LDFLAGS "")
+(define (required-lib-not-found libname)
+  (errmsg "~a not found.\n" libname)
+  (exit 1))
 
-(cf-check-headers '("sqlite3.h"))
-
-(cf-check-lib "sqlite3" "sqlite3_libversion"
-              :if-not-found required-lib-not-found)
+(cf-check-lib
+ "sqlite3" "sqlite3_libversion"
+ :if-not-found required-lib-not-found)
 
 ;; Output
 (cf-output-default)

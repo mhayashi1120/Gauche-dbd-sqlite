@@ -1,7 +1,10 @@
-*.o
-Gauche-dbd-sqlite.gpd
-*.so
-*.log
-VERSION
+/Gauche-dbd-sqlite.gpd
+/VERSION
+/test.log
+/config.log
+
 Makefile
+
 dbd_sqlitelib.c
+*.o
+*.so
