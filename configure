@@ -42,6 +42,10 @@
            [(equal? werror "yes")])
   (cf-subst-append 'CFLAGS "-Werror"))
 
+(cf-check-headers
+ '("sqlite3.h")
+ :if-not-found required-lib-not-found)
+
 (cond
  [(cf-package-ref 'sqlite3) =>
   (^p (cf-subst-prepend 'LIBS #"-l~|p|"))]
