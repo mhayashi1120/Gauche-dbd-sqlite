@@ -18,10 +18,10 @@ jobs:
     container:
       image: practicalscheme/gauche
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3.1.0
       - name: Setup package
         run: |
-          apt update;
-          apt install -y libsqlite3-dev;
+          apt-get update -y --allow-releaseinfo-change;
+          apt-get install -y libsqlite3-dev;
       - name: CI
         run: ./run-ci.sh
