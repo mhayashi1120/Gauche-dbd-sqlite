@@ -46,6 +46,8 @@ dbd_sqlite_HDRS = $(srcdir)/dbd_sqlite.h
 
 LOCAL_GOSH = $(GOSH) -I$(srcdir)
 
+TEST_LOG := test.log
+
 all : $(TARGET)
 
 dbd_sqlite.$(SOEXT): $(dbd_sqlite_SRCS) $(dbd_sqlite_HDRS)
@@ -56,8 +58,8 @@ dbd_sqlite.$(SOEXT): $(dbd_sqlite_SRCS) $(dbd_sqlite_HDRS)
 	  --local=$(LOCAL_PATHS) --verbose dbd_sqlite $(dbd_sqlite_SRCS)
 
 check : all
-	@rm -f test.log
-	$(LOCAL_GOSH) $(srcdir)/test.scm > test.log
+	@rm -f $(TEST_LOG)
+	$(LOCAL_GOSH) $(srcdir)/test.scm > $(TEST_LOG)
 
 install : all
 	$(INSTALL) -m 444 -T $(GAUCHE_PKGINCDIR) $(HEADERS)
@@ -73,13 +75,17 @@ uninstall :
 
 clean :
 	$(GAUCHE_PACKAGE) compile --clean dbd_sqlite $(dbd_sqlite_SRCS)
-	rm -rf core $(TARGET) $(GENERATED) *~ test.log so_locations
+	rm -rf core $(TARGET) $(GENERATED) *~ $(TEST_LOG) so_locations
 
 distclean : clean
 	rm -rf $(CONFIG_GENERATED)
 
 maintainer-clean : clean-sample clean
 	rm -rf $(CONFIG_GENERATED)  VERSION
+
+validate :
+	@echo "Testing current setup"
+	$(GOSH) $(srcdir)/test.scm >> $(TEST_LOG)
 
 clean-sample:
 	rm -f sample.sqlite
